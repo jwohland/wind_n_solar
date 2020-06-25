@@ -7,7 +7,6 @@
 # 1) restrict 20CR data to European domain (75/-15/30/35)
 # 2) regrid 20CR to CERA20C grid
 
-
 module load cdo
 
 data_dir=/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/data/20CRv3
@@ -25,10 +24,11 @@ do
       echo "exists already"
     else
       # 1) select box that is 5 degrees larger than target grid to avoid boundary effects
-      cdo sellonlatbox,-20,40,25,80 UGRD100m.1901_mem001.nc ${data_dir}/tmp.nc
+      cdo sellonlatbox,-20,40,25,80 ${filename} ${data_dir}/tmp.nc
       # 2) bilinear interpolation to CERA20C grid
       cdo remapbil,${target_grid} ${data_dir}/tmp.nc ${data_dir}/${filename}_CERAgrid.nc
       rm ${data_dir}/tmp.nc
     fi
   done
+  cd ..
 done
