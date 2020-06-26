@@ -61,8 +61,8 @@ def main(cera_index, noaa_index, lat_index):
     """
     data_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/data/'
     out_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/'
-    name = ('CERA_' + str(cera_index) if cera_index >= 0  else '20CR_' + str(noaa_index)) + \
-           'latindex_' + str(lat_index) + '_lanczos_54months.nc'
+    name = ('CERA_' + str(cera_index) if cera_index >= 0 else '20CRv3_' + str(noaa_index)) + \
+           '_latindex_' + str(lat_index) + '_lanczos_54months.nc'
     try:
         xr.open_dataset(out_path + name)
     except FileNotFoundError:
