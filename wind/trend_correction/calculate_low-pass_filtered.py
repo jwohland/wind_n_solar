@@ -16,6 +16,7 @@ import xarray as xr
 from oceans.filters import lanc
 import glob
 import sys
+import pandas as pd
 
 
 def apply_lanczos(df, years=4.5):
@@ -40,43 +41,65 @@ def get_filelist(cera_index, noaa_index, data_path):
     """
     calculates list of files needed for the CERA ensemble or the specific noaa 20cr ensemble member
     :param cera_index: index of cera ensemble member
-    :param noaa_index: index of noaa 20Cr. Members chosen from a randomly created list indexed with noaa_index
+    :param noaa_index: index of noaa 20Cr
     :param data_path: path to the data directory
     :return:
     """
-    if cera_index:
-        filelist = glob.glob(data_path + 'CERA20C/' + '*instant.nc')
-    elif noaa_index:
-        noaa_member = ['001', '011', '014', '020', '027', '037', '045', '046', '069', '075'][noaa_index]
-        filelist = glob.glob(data_path + '20CRv3/wspd/daily/' + noaa_member +'/*.nc')  # todo this is just a placeholder. Has to point to regridded 100m 20CRv3 wind speeds later
-    return filelist
+    if cera_index >= 0:
+        filelist = glob.glob(data_path + 'CERA20C/*.nc')
+    elif noaa_index >= 0:
+        filelist = glob.glob(data_path + '20CRv3/*.nc')
+    return sorted(filelist)
 
 
-def main(cera_index, noaa_index):
-    data_path = '/cluster/work/apatt/wojan/data/'  # todo update path
-    out_path = '/cluster/work/apatt/wojan/data/'  # todo update path
-    name = ('CERA_' + str(cera_index) if cera_index else '20CR_' + str(noaa_index)) + '_lanczos_54months.nc'# todo should this be the index [0,1,2,3,4] or the ensemble member used?
+def main(cera_index, noaa_index, lat_index):
+    """
+    :param cera_index: number of the CERA ensemble member to be used. If <0, noaa 20CR is used.
+    :param noaa_index: number of the 20CRv3 ensemble member to be used. If <0, CERA20C is used.
+    :param lat_index: controls which latitude is to be computed
+    :return:
+    """
+    data_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/data/'
+    out_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/'
+    name = ('CERA_' + str(cera_index) if cera_index >= 0  else '20CR_' + str(noaa_index)) + \
+           'latindex_' + str(lat_index) + '_lanczos_54months.nc'
     try:
         xr.open_dataset(out_path + name)
     except FileNotFoundError:
         filelist = get_filelist(cera_index, noaa_index, data_path)
         ds = xr.open_mfdataset(filelist,
-                               chunks={'latitude': 5, 'longitude': 5},
                                combine='by_coords')
-        if cera_index:
-            ds = ds.sel({'number': cera_index}, drop=True)  # todo check if number correct name
-        # todo from here on very handwavy
+        ds = prepare_data(ds)
         dfs = []
-        for loc in ds.loc:
-            df = ds.to_dataframe()
+        lat = ds.latitude.values[lat_index]
+        for lon in ds.longitude.values:
+            print(lon)
+            data_tmp = ds.sel({'latitude': lat, 'longitude': lon}).load()
+            df = data_tmp.to_dataframe()
             apply_lanczos(df)
-            dfs.append(df)
-        dfs.merge()
-        ds_out = dfs.todataset()
-        # todo add 1.5h offset
-
+            df = df.drop('s100', axis=1)
+            dfs.append(pd.pivot_table(df, index=['time', 'number', 'latitude', 'longitude']).to_xarray())
+        ds_out = xr.combine_by_coords(dfs)
         ds_out.to_netcdf(out_path + name)
 
 
-cera_index, noaa_index = int(sys.argv[1])-1, int(sys.argv[2])-1
-main(cera_index, noaa_index)
+def prepare_data(ds):
+    ds = ds['s100']
+    if cera_index >= 0:
+        ds = ds.sel({'number': cera_index})
+    elif noaa_index >= 0:
+        ds = ds.sel({'number': noaa_index})
+    ds = ds.chunk({'latitude': 1, 'longitude': 1, 'time': 318496})
+    return ds
+
+
+# todo this currently can not work for 20CR
+
+cera_index, noaa_index, lat_index = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
+print('cera index: ' + str(cera_index))
+print('noaa index: ' + str(noaa_index))
+print('lat index: ' + str(lat_index))
+if cera_index >= 0 and noaa_index >= 0:
+    print('This case is not allowed')
+else:
+    main(cera_index, noaa_index, lat_index)
