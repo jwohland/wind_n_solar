@@ -2,6 +2,11 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import glob
 import matplotlib as mpl
+import cartopy.crs as ccrs
+import sys
+sys.path.insert(1, '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/code')
+from utils import plot_field
+
 
 mpl.use('Agg')
 
@@ -28,6 +33,7 @@ noaa_data = xr.open_mfdataset(glob.glob(data_path + '20CR*_latindex_[15 25 35]*.
 cera_data = xr.open_mfdataset(glob.glob(data_path + 'CERA*_latindex_[15 25 35]*.nc'), combine='by_coords')
 rep_noaa, rep_cera = identify_representative(noaa_data), identify_representative(cera_data)
 
+# Investigate spread in full ensemble for three latitude bands
 for lat in [15, 25, 35]:
     noaa_data = xr.open_mfdataset(glob.glob(data_path + '20CR*_latindex_' + str(lat) + '*.nc'), combine='by_coords')
     cera_data = xr.open_mfdataset(glob.glob(data_path + 'CERA*_latindex_' + str(lat) + '*.nc'), combine='by_coords')
@@ -73,3 +79,29 @@ for lat in [15, 25, 35]:
         plt.savefig(
             plot_path + str(lat) + '/Diff_lat_' + str(noaa_data.latitude.values[0]) + '_lon_' + str(lon) + '.jpeg')
         plt.close('all')
+
+# Maps using representative members (CERA 7, NOAA 5)
+cera_data = xr.open_mfdataset(glob.glob(data_path + 'CERA_7_latindex_*.nc'), combine='by_coords')
+noaa_data = xr.open_mfdataset(glob.glob(data_path + '20CRv3_5_latindex_*.nc'), combine='by_coords')
+
+def plot_diff_mean(ds_noaa, ds_cera, year_start, year_duration):
+    cmap = mpl.cm.get_cmap('RdBu_r')
+    tmp_noaa = ds_noaa.sel({'time':slice(str(year_start), str(year_start + year_duration))})
+    tmp_cera = ds_cera.sel({'time':slice(str(year_start), str(year_start + year_duration))})
+    f, ax = plt.subplots(ncols=2, figsize=(12, 6), subplot_kw={'projection': ccrs.PlateCarree()})
+    plot_field(tmp_cera['s100_low'].mean(dim='time'), ax=ax[0], title='CERA', vmin=1.5, vmax=12)
+    diff = (tmp_noaa.drop('number') - tmp_cera.drop('number')).squeeze()
+    plot_field(diff['s100_low'].mean(dim='time'), ax=ax[1], title='NOAA - CERA', vmin=-3.5, vmax=3.4, cmap=cmap)
+    for i_lat in [-15, -25, -35]:  # open_mfdataset orders latitude opposite
+        ax[1].plot([-15, 35], [noaa_data.latitude[i_lat].values,
+                               noaa_data.latitude[i_lat].values], color='grey', alpha=.5)
+    plt.suptitle(str(year_start) + ' - ' + str(year_start + year_duration))
+    plt.subplots_adjust(left=0.05, right=0.93)
+    plt.savefig(plot_path + 'diffmean_' + str(year_start) + '_' + str(year_start + year_duration) + '.jpeg', dpi=300)
+    plt.close('all')
+
+
+for year_start in range(1901, 2001, 10):
+    plot_diff_mean(noaa_data, cera_data, year_start, 10)
+
+plot_diff_mean(noaa_data, cera_data, 1901, 108)
