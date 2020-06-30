@@ -93,8 +93,6 @@ def prepare_data(ds):
     return ds
 
 
-# todo this currently can not work for 20CR
-
 cera_index, noaa_index, lat_index = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
 print('cera index: ' + str(cera_index))
 print('noaa index: ' + str(noaa_index))
