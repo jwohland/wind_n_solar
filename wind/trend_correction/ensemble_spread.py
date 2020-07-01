@@ -24,7 +24,7 @@ def identify_representative(ds):
     return tmp.where(tmp == pseudo_median, drop=True).number.values[0]
 
 
-data_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/'
+data_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/lanczos/'
 plot_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/plots/ensemble_spread/'
 colors = ['peru', 'olive']
 
