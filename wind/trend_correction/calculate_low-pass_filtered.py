@@ -60,7 +60,7 @@ def main(cera_index, noaa_index, lat_index):
     :return:
     """
     data_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/data/'
-    out_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/'
+    out_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/lanczos/'
     name = ('CERA_' + str(cera_index) if cera_index >= 0 else '20CRv3_' + str(noaa_index)) + \
            '_latindex_' + str(lat_index) + '_lanczos_54months.nc'
     try:
