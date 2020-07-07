@@ -13,7 +13,9 @@ def interpol(power):
     """
     start, end = power.first_valid_index(), power.last_valid_index()
     power = power.reindex(np.arange(start, end+0.01, 0.01), tolerance=10**(-7), method='nearest')
-    return power.interpolate(method='spline', order=3, s=0)
+    power = power.interpolate(method='spline', order=3, s=0)
+    power.index = np.round(power.index, decimals=2)
+    return power
 
 
 base_path = '/home/janwohland/Documents/Europmult/renewable_generation/wind_n_solar/'
@@ -41,13 +43,9 @@ for i, turbine_name in enumerate(rep_turbines):
         power_curve_smoothed = interpol(power_curve_smoothed)
         ax[i].plot(power_curve_smoothed, label=method if i == 1 else '')
         if method == 'turbulence_intensity':
-            # add to collection
-            if i == 0:
-                df_final = power_curve_smoothed.rename(columns={'value': turbine_name})
-            else:
-                df_final = pd.concat([df_final,
-                                      power_curve_smoothed.rename(columns={'value': turbine_name})],
-                                     sort=False)
+            #save
+            df_final = power_curve_smoothed.rename(columns={'value': turbine_name})
+            df_final.to_pickle(out_path + 'final_power_curve_' + str(i) + '.p')
     ax[i].set_title(turbine_name)
     ax[i].set_xlabel('Wind speed [m/s]')
 ax[1].legend()
@@ -55,4 +53,3 @@ ax[0].set_ylabel('Normalized power curve [W/W]')
 plt.subplots_adjust(left=0.05, right=0.98, wspace=0.1)
 plt.savefig(plot_path + 'smoothing.jpeg', dpi=300)
 
-df_final.to_pickle(out_path + 'final_power_curves.p')
