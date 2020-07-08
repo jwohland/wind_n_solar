@@ -21,6 +21,22 @@ class Power:
         return out
 
 
+def update_attrs(ds, var, unitname, varname, long_varname):
+    """
+    Updates metadata of an xarray dataset, for example after trend calculation
+    :param ds: input dataset
+    :param var; variable in ds that is to be updated
+    :param unitname: new units
+    :param varname: new name of the variable
+    :param long_varname: new long name of the variable
+    :return:
+    """
+    ds = ds.rename_vars({var: varname})
+    ds[varname].attrs['units'] = unitname
+    ds[varname].attrs['long_name'] = long_varname
+    return ds
+
+
 wind_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/trend_corrected/'
 power_curve_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/power_curves/'
 out_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/wind_power/'
@@ -36,16 +52,21 @@ if i in [0, 100]:
     wind_dropped = wind.dropna('time')
 
 for turbine_index in range(3):
+    P = Power(turbine_index)
     try:
         xr.open_dataset(out_path + P.turbine_name + '/Wind_power_' + year + '.nc')
     except FileNotFoundError:
-        P = Power(turbine_index)
         print(P.turbine_name)
         t_0 = time.time()
         wind_power = xr.apply_ufunc(P.power_conversion,
                                     wind['s100'],
                                     vectorize=True,
                                     dask='allowed')
+        wind_power = update_attrs(wind_power,
+                                  's100',
+                                  '',
+                                  'wind_power',
+                                  'normalized_wind_power_generation')
         print('wind power conversion took ' + str(time.time() - t_0))
         t_0 = time.time()
         wind_power.to_netcdf(out_path + P.turbine_name + '/Wind_power_' + year + '.nc')
