@@ -9,7 +9,7 @@ import sys
 class Power:
     def __init__(self, turbine_index):
         self.power_curve = pd.read_pickle(sorted(glob.glob(power_curve_path + '*.p'))[turbine_index])
-        self.turbine_name = self.power_curve.keys()[0].replace('/', '_')
+        self.turbine_name = self.power_curve.keys()[0].replace('/', '_')  # / leads to issues when saving
 
     def power_conversion(self, s):
         s = np.round(s, 2)  # only two decimal accuracy in power curve
@@ -49,7 +49,7 @@ print(year)
 
 # First and last year contain Nans in first/last half of the year. Remove here
 if i in [0, 100]:
-    wind_dropped = wind.dropna('time')
+    wind = wind.dropna('time')
 
 for turbine_index in range(3):
     P = Power(turbine_index)
@@ -61,7 +61,7 @@ for turbine_index in range(3):
         wind_power = xr.apply_ufunc(P.power_conversion,
                                     wind['s100'],
                                     vectorize=True,
-                                    dask='allowed')
+                                    dask='allowed').to_dataset()
         wind_power = update_attrs(wind_power,
                                   's100',
                                   '',
