@@ -11,18 +11,19 @@ import numpy as np
 import pandas as pd
 
 base_path = '/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/'
-data_paths = ['output/trend_corrected/annual/', '/data/CERA20C/annual/', 'data/20CRv3/annual']
+data_paths = ['output/trend_corrected/annual/', '/data/CERA20C/annual/', 'data/20CRv3/annual/']
 plot_paths = ['plots/analysis/eof/annual/trend_corrected/',
               'plots/analysis/eof/annual/CERA20C/',
               'plots/analysis/eof/annual/20CRv3/']
 
 for i, data_path in enumerate(data_paths):
     plot_path = plot_paths[i]
+    data_name = plot_path.split('/')[-2]
 
     filelist = sorted(glob.glob(base_path + data_path + '*.nc'))
     all_wind = xr.open_mfdataset(filelist, combine='by_coords')
 
-    for number in range(10):
+    for number in all_wind.number.values:
         wind = all_wind.sel({'number': number})
         solver = Eof(wind['s100'])
         N = 5
@@ -43,5 +44,7 @@ for i, data_path in enumerate(data_paths):
             pc = pcs.sel({'mode': i}, drop=True)
             pc = pd.Series(data=pc.values, index=pc.time.values)
             pc.plot(ax=ax[1, i])
+            pc.rolling(window=5, center=True).mean().plot(ax=ax[1, i], ls='--', color='black', lw=2)
         plt.subplots_adjust(left=0.05, right=0.92)
-        plt.savefig(base_path + plot_path + 'test_eof_' + str(number) + '.png')
+        plt.suptitle(data_name)
+        plt.savefig(base_path + plot_path + 's100_eofs_' + str(int(number)) + '.png')
