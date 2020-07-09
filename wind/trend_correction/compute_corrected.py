@@ -60,7 +60,7 @@ def main():
     # calculate for individual years for memory reasons
     for year_index in range(len(filedic['CERA'])):
         cera_raw = xr.open_mfdataset(filedic['CERA'][year_index], combine='by_coords', preprocess=drop_non_wind)
-        cera_corrected = (cera_raw['s100'] - diff['s100_low']).to_dataset(name='s100')
+        cera_corrected = (cera_raw['s100'] + diff['s100_low']).to_dataset(name='s100')
         cera_corrected.compute()
         year = pd.to_datetime(cera_corrected.time[0].values).year
         print(year)
