@@ -21,3 +21,29 @@ do
   chmod 400 annual/annual_$filename
   rm annual/reordered*
 done
+
+# annual means of wind power generation data
+cd /cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/wind_power || exit
+cd E-126_7580 || exit
+for filename in *.nc
+do
+  cdo timmean $filename annual/annual_$filename
+done
+rm annual/*1905*.nc  #do not contain a full year of data
+rm annual/*2005*.nc
+
+cd ../SWT120_3600 || exit
+for filename in *.nc
+do
+  cdo timmean $filename annual/annual_$filename
+done
+rm annual/*1905*.nc  #do not contain a full year of data
+rm annual/*2005*.nc
+
+cd ../SWT142_3150 || exit
+for filename in *.nc
+do
+  cdo timmean $filename annual/annual_$filename
+done
+rm annual/*1905*.nc  #do not contain a full year of data
+rm annual/*2005*.nc
