@@ -4,6 +4,6 @@
 #BSUB -R "rusage[mem=7000]"
 #BSUB -W 24:00
 #BSUB -r
-#BSUB -oo ../../../logs/calculate_windpower_%I.txt
+#BSUB -o ../../../logs/calculate_windpower_%I.txt
 
 python windpower.py $LSB_JOBINDEX
