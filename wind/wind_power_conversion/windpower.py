@@ -15,7 +15,7 @@ class Power:
         s = np.round(s, 2)  # only two decimal accuracy in power curve
         if s < self.power_curve.index[0] or s > self.power_curve.index[-1]:
             # below cut_in or above cut_out
-            out = 0
+            out = 0.
         else:
             out = self.power_curve.loc[s].values[0]
         return out
