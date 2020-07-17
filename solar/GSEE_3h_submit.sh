@@ -8,6 +8,6 @@
 for ensemble_member in {1..10}
 do
   echo ${ensemble_member}
-  python GSEE_3h_playground.py  ${LSB_JOBINDEX} ${ensemble_member}
+  python GSEE_3h.py  ${LSB_JOBINDEX} ${ensemble_member}
 done
 

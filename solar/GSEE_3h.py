@@ -163,7 +163,7 @@ try:
     year_index = (
         int(sys.argv[1]) - 1
     )  # JOB IDs start at 1 and not at 0, allowed values for year_index 0..108
-    number = int(sys.argv[1]) - 1  # allowed values 0..9
+    number = int(sys.argv[2]) - 1  # allowed values 0..9
 except IndexError:
     year_index = 0
     number = 0
