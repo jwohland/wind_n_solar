@@ -1,6 +1,6 @@
 #!/bin/sh
 #BSUB -J GSEE_3h[1-109]
-#BSUB -R "rusage[mem=8000]"
+#BSUB -R "rusage[mem=2000]"
 #BSUB -W 24:00
 #BSUB -r
 #BSUB -oo ../../logs/GSEE_3h_%I.txt
