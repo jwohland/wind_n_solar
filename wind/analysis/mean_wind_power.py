@@ -32,9 +32,12 @@ for i, turbine_name in enumerate(turbine_names):
             turbine_name,
             vmin=0.1,
             vmax=0.5,
-            add_colorbar= True,
+            add_colorbar=True,
             cbar_ax=cbar_ax,
-            cbar_kwargs={"orientation": "horizontal", "label": 'Mean capacity factor'},
+            cbar_kwargs={
+                "orientation": "horizontal",
+                "label": "Mean wind capacity factor",
+            },
             levels=9,
         )
     else:
