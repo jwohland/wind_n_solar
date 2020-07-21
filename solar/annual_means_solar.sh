@@ -4,7 +4,7 @@ cd /cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/solar_powe
 module load cdo
 
 # delete from here onwards
-for filename in *number_0.nc
+for filename in *.nc
 do
   cdo timmean $filename annual/annual_$filename
 done
