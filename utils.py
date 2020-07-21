@@ -6,6 +6,8 @@ with warnings.catch_warnings():
     import cartopy
     import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
+import glob
+import pandas as pd
 import matplotlib as mpl
 mpl.use('Agg')
 mpl.rcParams['axes.spines.left'] = False
@@ -189,3 +191,19 @@ def add_letters(ax, x=-.1, y=1.03, fs=10):
     letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p']
     for il, tmp_ax in enumerate(ax.flat):
         tmp_ax.text(x, y, letters[il], weight='bold', transform=tmp_ax.transAxes, fontsize=fs)
+
+
+def load_annual_solar_ensemble(base_path, data_path):
+    """
+    Loads the annual solar pv generation ensemble which is stored as individual files per year and ensemble member
+    :param base_path:
+    :param data_path:
+    :return:
+    """
+    all_power_list = []
+    for number in range(10):
+        filelist = sorted(
+            glob.glob(base_path + data_path + "annual/*number_" + str(number) + ".nc")
+        )
+        all_power_list.append(xr.open_mfdataset(filelist, combine="by_coords"))
+    return xr.concat(all_power_list, pd.Index(range(10), name="number"))
