@@ -50,8 +50,10 @@ class Generation_type:
         self.all_power = {}
         if name == "solar":
             self.var = "PV"
+            self.CF_threshold = 0.1
         else:
             self.var = "wind_power"
+            self.CF_threshold = 0.15
 
     def get_filelist(self, scenario):
         return sorted(glob.glob(self.data_path + scenario + "/annual/*.nc"))
@@ -71,13 +73,7 @@ class Generation_type:
 
 
 def plot_hotspot(
-    Generation,
-    delta_power,
-    all_power,
-    rel,
-    scenario,
-    CF_treshold=0.15,
-    ensemblemean=False,
+    Generation, delta_power, all_power, rel, scenario, ensemblemean=False,
 ):
     """
 
@@ -88,7 +84,7 @@ def plot_hotspot(
     :return:
     """
     # prepare plotting
-    cmap = mpl.cm.get_cmap("Greens")
+    cmap = mpl.cm.get_cmap("coolwarm")
     plt.close("all")
     if ensemblemean:
         f, ax = plt.subplots(
@@ -101,7 +97,7 @@ def plot_hotspot(
             subplot_kw={"projection": ccrs.PlateCarree()},
             figsize=(12, 5),
         )
-    cbar_ax = f.add_axes([0.3, 0.1, 0.4, 0.03])
+    cbar_ax = f.add_axes([0.15, 0.1, 0.7, 0.03])
     vmax = np.round(delta_power[Generation.var].values.max() * 1.1, 2)
     label_name = "Max - Min 20y " + Generation.name + " power"
     if rel:
@@ -120,6 +116,16 @@ def plot_hotspot(
             vmax=vmax,
             levels=7,
         )
+        # shade low generation areas
+        mean_CF = all_power.mean(["time", "number"])[Generation.var]
+        mean_CF.plot.contourf(
+            ax=ax,
+            levels=[0, Generation.CF_threshold],
+            hatches=["...", ""],
+            alpha=0,
+            add_colorbar=False,
+            add_labels=False,
+        )
     else:
         for i, number in enumerate(all_power.number.values):
             plot_field(
@@ -132,14 +138,14 @@ def plot_hotspot(
                 cbar_kwargs={"orientation": "horizontal", "label": label_name},
                 vmin=0,
                 vmax=vmax,
-                levels=9
+                levels=9,
             )
             # shade low generation areas
             mean_CF = all_power.sel({"number": number}).mean("time")[Generation.var]
             mean_CF.plot.contourf(
                 ax=ax.flatten()[i],
-                levels=[0, CF_treshold],
-                hatches=["....", ""],
+                levels=[0, Generation.CF_threshold],
+                hatches=["...", ""],
                 alpha=0,
                 add_colorbar=False,
                 add_labels=False,
@@ -164,6 +170,7 @@ def plot_hotspot(
 
 
 def plot_CDFs(Generation, cf_mins=[0.3, 0.2]):
+    cf_mins.append(Generation.CF_threshold)
     mpl.rcParams["axes.spines.left"] = True
     mpl.rcParams["axes.spines.bottom"] = True
     f, ax = plt.subplots(ncols=3, figsize=(15, 5))
@@ -171,32 +178,28 @@ def plot_CDFs(Generation, cf_mins=[0.3, 0.2]):
         all_power = Generation.open_data(scenario).load()
         # evaluate data
         all_power = all_power.rolling(time=20, center=True).mean().dropna("time")
-        # all sites
-        delta_power = relative_change(all_power)
-        plot_CDF(delta_power, ax[0], "all locations", scenario)
-        # mask low-generation sites
         for j, cf_min in enumerate(cf_mins):
-            masked_power = all_power.where(
-                (all_power[Generation.var].mean(dim=["time", "number"]) > cf_min)
-                & (
-                    all_power[Generation.var].mean(dim=["time", "number"])
-                    < cf_min + 0.1
+            if j == 2:  # all locations with CF larger than threshold
+                masked_power = all_power.where(
+                    (all_power[Generation.var].mean(dim=["time", "number"]) > cf_min)
                 )
-            )
+                title = "CF > " + str(cf_min)
+            else:  # locations within a CF band
+                masked_power = all_power.where(
+                    (all_power[Generation.var].mean(dim=["time", "number"]) > cf_min)
+                    & (
+                        all_power[Generation.var].mean(dim=["time", "number"])
+                        < cf_min + 0.1
+                    )
+                )
+                title = str(np.round(cf_min + 0.1, 2)) + " > CF > " + str(cf_min)
             delta_power = relative_change(masked_power)
             plot_CDF(
                 delta_power,
-                ax[1 + j],
-                str(np.round(cf_min + 0.1, 2)) + " > CF > " + str(cf_min),
+                ax[j],
+                title,
                 scenario,
             )
-        # plot 80th percentile
-        # for CF_thr in np.arange(0, 0.5, 0.01):
-        #    masked_wind_power = all_power.where(
-        #        all_power.wind_power.mean(dim=["time", "number"]) > CF_thr
-        #    )
-        #    delta_power = relative_change(masked_wind_power).wind_power
-        #    np.percentile(delta_power[np.isfinite(masked_wind_power)], 80)
 
     ax[0].set_ylabel("Cumulative density function")
     for i in range(3):
@@ -225,8 +228,8 @@ Wind = Generation_type(
 )
 
 for Generation in [Solar, Wind]:
-    for scenario in Generation.scenarios:
-        for rel in [True, False]:
+    for rel in [True, False]:
+        for scenario in Generation.scenarios:
             # load data
             all_power = Generation.open_data(scenario).load()
             # evaluate data
@@ -237,10 +240,10 @@ for Generation in [Solar, Wind]:
             plot_hotspot(Generation, delta_power, all_power, rel, scenario)
             plot_hotspot(
                 Generation, delta_power, all_power, rel, scenario, ensemblemean=True
-            )
+            )  # todo plot ensemble mean in 3x1 subplot for all scenarios
 
 ###
 # CDF analysis
 ###
-plot_CDFs(Solar, [0.15, 0.05])
+plot_CDFs(Solar, [0.1, 0.0])
 plot_CDFs(Wind, [0.3, 0.2])
