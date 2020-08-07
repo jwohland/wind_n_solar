@@ -6,6 +6,7 @@ import glob
 import time
 import sys
 import gsee.pv as pv  # branched case
+import numpy as np
 
 
 def open_CERA(year_index, number):
@@ -100,40 +101,96 @@ def prep_dataset_gsee(ds):
     return tmp_df
 
 
-def run_GSEE_CERA(year_index=57, number=0):
+def draw_sample(mean, std, shape, seed):
+    """
+    Draw a sample for the tilt and azimuth angles of the PV panels based on gaussians.
+    
+    Follows the approach by Pfenninger & Staffell, 2016, Energy (last sentences in Sec 2.2.)
+
+    :param mean: mean value
+    :param std: standard deviation
+    :param shape: shape of the output
+    :return: 
+    """
+    np.random.seed(seed)
+    return np.random.normal(loc=mean, scale=std, size=shape)
+
+
+def get_parameters(out_path, scenario, shape):
+    if scenario == 0:
+        out_path += "both_constant/"
+        params = {
+            "tilt": 25,
+            "azim": 180,
+            "tracking": 0,
+            "capacity": 1,
+        }  # tilt & azimuth converted to radians in pv.run_model
+    elif scenario == 1:
+        out_path += "tilt_constant/"
+        params = {
+            "tilt": 25,
+            "azim_mean": 180,
+            "azim_std": 40,
+            "tracking": 0,
+            "capacity": 1,
+        }  # tilt & azimuth converted to radians in pv.run_model
+    elif scenario == 2:
+        out_path += "neither_constant/"
+        params = {
+            "tilt_mean": 25,
+            "tilt_std": 15,
+            "azim_mean": 180,
+            "azim_std": 40,
+            "tracking": 0,
+            "capacity": 1,
+        }  # tilt & azimuth converted to radians in pv.run_model
+    # draw samples for tilt and azimuth
+    if "tilt" in params.keys():
+        params["tilt_array"] = np.zeros(shape) + params["tilt"]
+    else:
+        params["tilt_array"] = draw_sample(
+            params["tilt_mean"], params["tilt_std"], shape, seed=0
+        )
+    if "azim" in params.keys():
+        params["azim_array"] = np.zeros(shape) + params["azim"]
+    else:
+        params["azim_array"] = draw_sample(
+            params["azim_mean"], params["azim_std"], shape, seed=1
+        )
+
+    return out_path, params
+
+
+def run_GSEE_CERA(year_index=57, number=0, scenario=0):
     """
     Calls GSEEs pv.run_model() for all latlon pairs in the input data.
     Results are converted into a xarray Dataset and saved.
     :param year_index:
     :param number: CERA20C ensemble member (allowed values: 0 to 9)
+    :param scenario: scenario index (0 is constant tilt and azimuth, 1 is constant tilt, 2 is tilt and azimuth non constant)
     :return:
     """
-    out_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/solar_power/default_panel"
-    params = {
-        "tilt": 30,
-        "azim": 180,
-        "tracking": 0,
-        "capacity": 1,
-    }  # tilt & azimuth converted to radians in pv.run_model
-
+    out_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/solar_power/"
     test_data = open_CERA(year_index, number=number)
     lats, lons = test_data.lat.values, test_data.lon.values
+    shape = (lats.size, lons.size)
+    out_path, params = get_parameters(out_path, scenario, shape)
 
     # loop over all locations and call GSEE pv.runmodel()
     lat_list = []
-    for lat in lats:
+    for i_lat, lat in enumerate(lats):
         print(lat)
         start = time.time()
         lon_list = []
-        for lon in lons:
+        for i_lon, lon in enumerate(lons):
             tmp_data = test_data.sel({"lat": lat, "lon": lon})
             tmp_df = prep_dataset_gsee(tmp_data)
 
             tmp_df["PV"] = pv.run_model(
                 data=tmp_df,
                 coords=(lat, lon),
-                tilt=params["tilt"],  # 30 degrees tilt angle
-                azim=params["azim"],  # facing towards equator,
+                tilt=params["tilt_array"][i_lat, i_lon],  # 30 degrees tilt angle
+                azim=params["azim_array"][i_lat, i_lon],  # facing towards equator,
                 tracking=params["tracking"],  # fixed - no tracking
                 capacity=params["capacity"],  # 1 W
                 irradiance_type="cumulative",  # CERA data is cumulative
@@ -153,8 +210,12 @@ def run_GSEE_CERA(year_index=57, number=0):
         end = time.time()
         print(str(int(end - start)) + " s")  # around 25s each
     pv_data = xr.concat(lat_list, dim="lat")
-    for var in params.keys():
+    for var in ["tracking", "capacity"]:
         pv_data[var] = params[var]
+    for var in ["tilt_array", "azim_array"]:
+        pv_data[var] = xr.DataArray(
+            dims=["lat", "lon"], coords=(lats, lons), data=params[var]
+        )
     name = "Solar_power_" + str(year_index + 1901) + "_number_" + str(number)
     pv_data.to_netcdf(out_path + name + ".nc")
 
@@ -164,9 +225,18 @@ try:
         int(sys.argv[1]) - 1
     )  # JOB IDs start at 1 and not at 0, allowed values for year_index 0..108
     number = int(sys.argv[2]) - 1  # allowed values 0..9
+    scenario = int(sys.argv[3]) - 1  # allowed values 0..2
 except IndexError:
     year_index = 0
     number = 0
+    scenario = 0
 
-print("year_index = " + str(year_index) + ", number = " + str(number))
+print(
+    "year_index = "
+    + str(year_index)
+    + ", number = "
+    + str(number)
+    + ", scenario = "
+    + str(scenario)
+)
 run_GSEE_CERA(year_index, number)
