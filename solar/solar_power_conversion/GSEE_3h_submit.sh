@@ -1,17 +1,23 @@
 #!/bin/sh
 #BSUB -J GSEE_3h[1-109]
 #BSUB -R "rusage[mem=2000]"
-#BSUB -W 24:00
+#BSUB -W 04:00
 #BSUB -r
-#BSUB -oo ../../logs/GSEE_3h_%I.txt
+#BSUB -oo ../../../logs/GSEE_3h_%I.txt
 
-for ensemble_member in {1..10}
+i=0
+for year in {1..109}
 do
-  echo ${ensemble_member}
-  for scenario in {1..3}
+  for ensemble_member in {1..10}
   do
-    echo ${scenario}
-    python GSEE_3h.py  ${LSB_JOBINDEX} ${ensemble_member} ${scenario}
+    for scenario in {1..3}
+    do
+      #echo ${scenario}
+      if [[ i -eq ${LSB_JOBINDEX} ]] ; then
+        echo ${year} ${ensemble_member} ${scenario}
+        python GSEE_3h.py  ${year} ${ensemble_member} ${scenario}
+      fi
+      i=$(( $i + 1))
+    done
   done
 done
-
