@@ -1,5 +1,5 @@
 #!/bin/sh
-#BSUB -J GSEE_3h[1-109]
+#BSUB -J GSEE_3h[1-3270]
 #BSUB -R "rusage[mem=2000]"
 #BSUB -W 04:00
 #BSUB -r
