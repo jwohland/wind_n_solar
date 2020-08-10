@@ -7,6 +7,7 @@ import time
 import sys
 import gsee.pv as pv  # branched case
 import numpy as np
+import os
 
 
 def open_CERA(year_index, number):
@@ -171,53 +172,55 @@ def run_GSEE_CERA(year_index=57, number=0, scenario=0):
     :return:
     """
     out_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/solar_power/"
+
     test_data = open_CERA(year_index, number=number)
     lats, lons = test_data.lat.values, test_data.lon.values
     shape = (lats.size, lons.size)
     out_path, params = get_parameters(out_path, scenario, shape)
+    output_name = "Solar_power_" + str(year_index + 1901) + "_number_" + str(number) + "_scenario_" + str(scenario) + ".nc"
 
-    # loop over all locations and call GSEE pv.runmodel()
-    lat_list = []
-    for i_lat, lat in enumerate(lats):
-        print(lat)
-        start = time.time()
-        lon_list = []
-        for i_lon, lon in enumerate(lons):
-            tmp_data = test_data.sel({"lat": lat, "lon": lon})
-            tmp_df = prep_dataset_gsee(tmp_data)
+    if not os.path.isfile(out_path + output_name):
+        # loop over all locations and call GSEE pv.runmodel()
+        lat_list = []
+        for i_lat, lat in enumerate(lats):
+            print(lat)
+            start = time.time()
+            lon_list = []
+            for i_lon, lon in enumerate(lons):
+                tmp_data = test_data.sel({"lat": lat, "lon": lon})
+                tmp_df = prep_dataset_gsee(tmp_data)
 
-            tmp_df["PV"] = pv.run_model(
-                data=tmp_df,
-                coords=(lat, lon),
-                tilt=params["tilt_array"][i_lat, i_lon],  # 30 degrees tilt angle
-                azim=params["azim_array"][i_lat, i_lon],  # facing towards equator,
-                tracking=params["tracking"],  # fixed - no tracking
-                capacity=params["capacity"],  # 1 W
-                irradiance_type="cumulative",  # CERA data is cumulative
-            )
+                tmp_df["PV"] = pv.run_model(
+                    data=tmp_df,
+                    coords=(lat, lon),
+                    tilt=params["tilt_array"][i_lat, i_lon],  # 30 degrees tilt angle
+                    azim=params["azim_array"][i_lat, i_lon],  # facing towards equator,
+                    tracking=params["tracking"],  # fixed - no tracking
+                    capacity=params["capacity"],  # 1 W
+                    irradiance_type="cumulative",  # CERA data is cumulative
+                )
 
-            tmp_df.drop(
-                ["temperature", "global_horizontal", "diffuse_fraction"],
-                axis=1,
-                inplace=True,
+                tmp_df.drop(
+                    ["temperature", "global_horizontal", "diffuse_fraction"],
+                    axis=1,
+                    inplace=True,
+                )
+                lon_list.append(
+                    tmp_df.reset_index()
+                    .pivot_table(values="PV", index=["time", "lat", "lon"])
+                    .to_xarray()
+                )
+            lat_list.append(xr.concat(lon_list, dim="lon"))
+            end = time.time()
+            print(str(int(end - start)) + " s")  # around 25s each
+        pv_data = xr.concat(lat_list, dim="lat")
+        for var in ["tracking", "capacity"]:
+            pv_data[var] = params[var]
+        for var in ["tilt_array", "azim_array"]:
+            pv_data[var] = xr.DataArray(
+                dims=["lat", "lon"], coords=(lats, lons), data=params[var]
             )
-            lon_list.append(
-                tmp_df.reset_index()
-                .pivot_table(values="PV", index=["time", "lat", "lon"])
-                .to_xarray()
-            )
-        lat_list.append(xr.concat(lon_list, dim="lon"))
-        end = time.time()
-        print(str(int(end - start)) + " s")  # around 25s each
-    pv_data = xr.concat(lat_list, dim="lat")
-    for var in ["tracking", "capacity"]:
-        pv_data[var] = params[var]
-    for var in ["tilt_array", "azim_array"]:
-        pv_data[var] = xr.DataArray(
-            dims=["lat", "lon"], coords=(lats, lons), data=params[var]
-        )
-    name = "Solar_power_" + str(year_index + 1901) + "_number_" + str(number)
-    pv_data.to_netcdf(out_path + name + ".nc")
+        pv_data.to_netcdf(out_path + output_name)
 
 
 try:
@@ -239,4 +242,4 @@ print(
     + ", scenario = "
     + str(scenario)
 )
-run_GSEE_CERA(year_index, number)
+run_GSEE_CERA(year_index, number, scenario)
