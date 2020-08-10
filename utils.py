@@ -207,3 +207,34 @@ def load_annual_solar_ensemble(base_path, data_path):
         )
         all_power_list.append(xr.open_mfdataset(filelist, combine="by_coords"))
     return xr.concat(all_power_list, pd.Index(range(10), name="number"))
+
+
+class Generation_type:
+    def __init__(self, name, scenarios, data_path, plot_path, base_path):
+        self.name = name
+        self.scenarios = scenarios
+        self.data_path = base_path + data_path
+        self.plot_path = base_path + plot_path
+        self.all_power = {}
+        if name == "solar":
+            self.var = "PV"
+            self.CF_threshold = 0.1
+        else:
+            self.var = "wind_power"
+            self.CF_threshold = 0.15
+
+    def get_filelist(self, scenario):
+        return sorted(glob.glob(self.data_path + scenario + "/annual/*.nc"))
+
+    def open_data(self, scenario):
+        # check if already calculated
+        if not scenario in self.all_power:
+            if self.name == "wind":
+                self.all_power[scenario] = xr.open_mfdataset(
+                    self.get_filelist(scenario), combine="by_coords"
+                )
+            else:
+                self.all_power[scenario] = load_annual_solar_ensemble(
+                    self.data_path, scenario + "/"
+                )
+        return self.all_power[scenario]

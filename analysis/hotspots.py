@@ -8,7 +8,7 @@ import glob
 import sys
 
 sys.path.append("../")
-from utils import plot_field, load_annual_solar_ensemble
+from utils import plot_field, load_annual_solar_ensemble, Generation_type
 import cartopy.crs as ccrs
 import numpy as np
 
@@ -39,37 +39,6 @@ def relative_change(ds):
     :return:
     """
     return (ds.max(dim="time") - ds.min(dim="time")) * 100.0 / ds.min(dim="time")
-
-
-class Generation_type:
-    def __init__(self, name, scenarios, data_path, plot_path, base_path):
-        self.name = name
-        self.scenarios = scenarios
-        self.data_path = base_path + data_path
-        self.plot_path = base_path + plot_path
-        self.all_power = {}
-        if name == "solar":
-            self.var = "PV"
-            self.CF_threshold = 0.1
-        else:
-            self.var = "wind_power"
-            self.CF_threshold = 0.15
-
-    def get_filelist(self, scenario):
-        return sorted(glob.glob(self.data_path + scenario + "/annual/*.nc"))
-
-    def open_data(self, scenario):
-        # check if already calculated
-        if not scenario in self.all_power:
-            if self.name == "wind":
-                self.all_power[scenario] = xr.open_mfdataset(
-                    self.get_filelist(scenario), combine="by_coords"
-                )
-            else:
-                self.all_power[scenario] = load_annual_solar_ensemble(
-                    self.data_path, scenario + "/"
-                )
-        return self.all_power[scenario]
 
 
 def plot_hotspot(
