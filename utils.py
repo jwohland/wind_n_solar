@@ -215,6 +215,7 @@ class Generation_type:
         self.scenarios = scenarios
         self.data_path = base_path + data_path
         self.plot_path = base_path + plot_path
+        self.base_path = base_path
         self.all_power = {}
         if name == "solar":
             self.var = "PV"
@@ -238,3 +239,6 @@ class Generation_type:
                     self.data_path, scenario + "/"
                 )
         return self.all_power[scenario]
+
+    def reset_plot_path(self, plot_path):
+        self.plot_path = self.base_path + plot_path
