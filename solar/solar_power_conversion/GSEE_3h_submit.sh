@@ -11,7 +11,7 @@ do
   for scenario in {1..3}
   do
     echo ${scenario}
-    python GSEE_3h.py  ${LSB_JOBINDEX} ${ensemble_member} ${scenario}
+    python GSEE_3h.py ${LSB_JOBINDEX} ${ensemble_member} ${scenario}
   done
 done
 
