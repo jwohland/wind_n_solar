@@ -8,7 +8,7 @@ from utils import plot_field, Generation_type
 base_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/"
 Solar = Generation_type(
     "solar",
-    ["default_panel", "both_constant", "tilt_constant", "neither_constant"],
+    ["both_constant", "tilt_constant", "neither_constant"],
     "output/solar_power/",
     "plots/analysis/mean_CF/",
     base_path,
@@ -49,7 +49,7 @@ for Generation in [Wind, Solar]:
                 cbar_ax=cbar_ax,
                 cbar_kwargs={
                     "orientation": "horizontal",
-                    "label": "Mean wind capacity factor",
+                    "label": "Mean " + Generation.name +" capacity factor",
                 },
                 levels=9,
             )

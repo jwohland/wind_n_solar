@@ -44,7 +44,7 @@ def perform_EOF(power, N):
 base_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/"
 Solar = Generation_type(
     "solar",
-    ["default_panel"],
+    ["default_panel", "both_constant", "tilt_constant", "neither_constant"],
     "output/solar_power/",
     "plots/analysis/hotspots/",
     base_path,
@@ -151,11 +151,10 @@ for Generation in [Solar, Wind]:
                     )
                 plt.suptitle(scenario)
                 if number == "ensemble_mean":
-                    plotname = "/" + Generation.name + "power_eofs_mean.png"
+                    plotname = Generation.name + "power_eofs_mean.png"
                 else:
                     plotname = (
-                        "/"
-                        + Generation.name
+                        Generation.name
                         + "power_eofs_"
                         + str(int(number))
                         + ".png"
