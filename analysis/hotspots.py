@@ -21,7 +21,7 @@ def plot_CDF(ds, ax, title, scenario):
     :param title
     :return:
     """
-    values = ds.to_array().values.flatten()
+    values = ds.values.flatten()
     ax.hist(
         values[np.isfinite(values)],  # drop nan values that occur in masked calculation
         cumulative=True,
@@ -162,7 +162,7 @@ def plot_CDFs(Generation, cf_mins=[0.3, 0.2]):
                     )
                 )
                 title = str(np.round(cf_min + 0.1, 2)) + " > CF > " + str(cf_min)
-            delta_power = relative_change(masked_power)
+            delta_power = relative_change(masked_power[Generation.var])
             plot_CDF(
                 delta_power,
                 ax[j],
@@ -173,7 +173,7 @@ def plot_CDFs(Generation, cf_mins=[0.3, 0.2]):
     ax[0].set_ylabel("Cumulative density function")
     for i in range(3):
         ax[i].set_xlabel(r"$\frac{P_{max} - P_{min}}{P_{min}}$ [%]")  #
-        ax[i].set_xlim(xmin=2, xmax=15)
+        ax[i].set_xlim(xmin=0, xmax=15)
         ax[i].grid(True)
     ax[0].legend(loc=2)
     plt.tight_layout()
@@ -183,11 +183,11 @@ def plot_CDFs(Generation, cf_mins=[0.3, 0.2]):
 base_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/"
 Solar = Generation_type(
     "solar",
-    ["default_panel"],
+    ["both_constant", "tilt_constant", "neither_constant"],
     "output/solar_power/",
     "plots/analysis/hotspots/",
     base_path,
-)  # todo update with scenario names once three solar options ready
+)
 Wind = Generation_type(
     "wind",
     ["E-126_7580", "SWT120_3600", "SWT142_3150"],
@@ -209,7 +209,7 @@ for Generation in [Solar, Wind]:
             plot_hotspot(Generation, delta_power, all_power, rel, scenario)
             plot_hotspot(
                 Generation, delta_power, all_power, rel, scenario, ensemblemean=True
-            )  # todo plot ensemble mean in 3x1 subplot for all scenarios
+            )
 
 ###
 # CDF analysis
