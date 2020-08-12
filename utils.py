@@ -203,7 +203,7 @@ def load_annual_solar_ensemble(base_path, data_path):
     all_power_list = []
     for number in range(10):
         filelist = sorted(
-            glob.glob(base_path + data_path + "annual/*number_" + str(number) + ".nc")
+            glob.glob(base_path + data_path + "annual/*number_" + str(number) + "*.nc")
         )
         all_power_list.append(xr.open_mfdataset(filelist, combine="by_coords"))
     return xr.concat(all_power_list, pd.Index(range(10), name="number"))
