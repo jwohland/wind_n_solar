@@ -8,7 +8,7 @@ import glob
 import sys
 
 sys.path.append("../")
-from utils import plot_field, load_annual_solar_ensemble, Generation_type
+from utils import plot_field, load_solar_ensemble, Generation_type
 import cartopy.crs as ccrs
 import numpy as np
 
@@ -139,7 +139,7 @@ def plot_hotspot(
 
 
 def plot_CDFs(Generation, cf_mins=[0.3, 0.2]):
-    cf_mins.append(Generation.CF_threshold)
+    #cf_mins.append(Generation.CF_threshold)
     mpl.rcParams["axes.spines.left"] = True
     mpl.rcParams["axes.spines.bottom"] = True
     f, ax = plt.subplots(ncols=3, figsize=(15, 5))
@@ -147,21 +147,23 @@ def plot_CDFs(Generation, cf_mins=[0.3, 0.2]):
         all_power = Generation.open_data(scenario).load()
         # evaluate data
         all_power = all_power.rolling(time=20, center=True).mean().dropna("time")
+        cf_inc = cf_mins[1] - cf_mins[0]
         for j, cf_min in enumerate(cf_mins):
-            if j == 2:  # all locations with CF larger than threshold
-                masked_power = all_power.where(
-                    (all_power[Generation.var].mean(dim=["time", "number"]) > cf_min)
+            #if j == 2:  # all locations with CF larger than threshold
+            #    masked_power = all_power.where(
+            #       (all_power[Generation.var].mean(dim=["time", "number"]) > cf_min)
+            #    )
+            #    title = "CF > " + str(cf_min)
+            #else:
+            # locations within a CF band
+            masked_power = all_power.where(
+                (all_power[Generation.var].mean(dim=["time", "number"]) > cf_min)
+                & (
+                    all_power[Generation.var].mean(dim=["time", "number"])
+                    < cf_min + cf_inc
                 )
-                title = "CF > " + str(cf_min)
-            else:  # locations within a CF band
-                masked_power = all_power.where(
-                    (all_power[Generation.var].mean(dim=["time", "number"]) > cf_min)
-                    & (
-                        all_power[Generation.var].mean(dim=["time", "number"])
-                        < cf_min + 0.1
-                    )
-                )
-                title = str(np.round(cf_min + 0.1, 2)) + " > CF > " + str(cf_min)
+            )
+            title = str(np.round(cf_min + cf_inc, 2)) + " > CF > " + str(cf_min)
             delta_power = relative_change(masked_power[Generation.var])
             plot_CDF(
                 delta_power,
@@ -214,5 +216,5 @@ for Generation in [Solar, Wind]:
 ###
 # CDF analysis
 ###
-plot_CDFs(Solar, [0.1, 0.0])
-plot_CDFs(Wind, [0.3, 0.2])
+plot_CDFs(Solar, [0.1, 0.15, 0.2])
+plot_CDFs(Wind, [0.15, 0.25, 0.35])
