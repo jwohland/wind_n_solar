@@ -115,6 +115,7 @@ for solar_scenario in Solar.scenarios:
                 extend='both',
                 vmin=-1,
                 vmax=1,
+                cmap=cmap,
             )
         add_row_label(ax[i, 0], wind_scenario)
 
