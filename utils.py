@@ -356,7 +356,7 @@ class Generation_type:
                 tmp = load_solar_ensemble(self.data_path, scenario + "/", annual=False)
             tmp = tmp.mean(["number"])  # ensemble mean
             self.monthly_power[scenario] = tmp.resample(time="1MS").mean(
-                dim="time"
+                dim="time",
             )  # monthly mean
         return self.monthly_power[scenario]
 
@@ -418,3 +418,15 @@ def calc_correlations_xarray(ds1, ds2, var1, var2, measure):
     else:
         warnings.warn("correlation type ill defined")
     return res
+
+
+def add_row_label(ax, text):
+    ax.text(
+        -0.1,
+        0.5,
+        text,
+        horizontalalignment="center",
+        rotation=90,
+        verticalalignment="center",
+        transform=ax.transAxes,
+    )

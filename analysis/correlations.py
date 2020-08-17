@@ -10,18 +10,7 @@ import sys
 import cartopy.crs as ccrs
 
 sys.path.append("../")
-from utils import plot_field, Generation_type, calc_correlations_xarray
-
-def add_row_label(ax, text):
-    ax.text(
-        -0.1,
-        0.5,
-        text,
-        horizontalalignment="center",
-        rotation=90,
-        verticalalignment="center",
-        transform=ax.transAxes,
-    )
+from utils import plot_field, Generation_type, calc_correlations_xarray, add_row_label
 
 base_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/"
 Solar = Generation_type(
