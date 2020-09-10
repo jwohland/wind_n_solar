@@ -12,7 +12,7 @@ Solar = Generation_type(
     "output/solar_power/",
     "plots/analysis/mean_CF/",
     base_path,
-)  # todo update with scenario names once three solar options ready
+)
 Wind = Generation_type(
     "wind",
     ["E-126_7580", "SWT120_3600", "SWT142_3150"],
