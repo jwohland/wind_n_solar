@@ -305,6 +305,14 @@ def load_solar_ensemble(base_path, data_path, annual=True):
 
 class Generation_type:
     def __init__(self, name, scenarios, data_path, plot_path, base_path):
+        """
+        Class to handle wind and solar generation considering different turbines or tilt/azimuth angles
+        :param name: wind or solar
+        :param scenarios: wind turbine name or name of the tilt/azimuth angle combination
+        :param data_path: path to data, relative to base_path
+        :param plot_path: path to plots, relative to base_path
+        :param base_path: path to directory containing code and plots
+        """
         self.name = name
         self.scenarios = scenarios
         self.data_path = base_path + data_path
@@ -362,6 +370,14 @@ class Generation_type:
 
     def reset_plot_path(self, plot_path):
         self.plot_path = self.base_path + plot_path
+
+    def get_mask(self, scenario):
+        mask_path = self.base_path + "output/optimization/masks/"
+        mask_name = "mask_" + scenario
+        try:
+            return xr.open_dataset(mask_path + mask_name + ".nc")
+        except FileNotFoundError:
+            print("Mask not computed yet.")
 
 
 def corr_pearson(ts1, ts2):
