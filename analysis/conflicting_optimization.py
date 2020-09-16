@@ -165,13 +165,23 @@ class cost_function:
         self.solar_timeseries = solar_timeseries
         self.wind_timeseries = wind_timeseries
 
+    def total_generation(self, wind_share):
+        """
+        Sum of wind and solar generation, normalized to unit mean
+        :param wind_share: share of wind capacity
+        :return:
+        """
+        G = wind_share * self.wind_timeseries + (1 - wind_share) * self.solar_timeseries
+        G /= G.mean("time")
+        return G
+
     def std_total_generation(self, wind_share):
         """
         Standard deviation of combined wind and solar generation
         :param wind_share: share of wind capacity
         :return:
         """
-        G = wind_share * self.wind_timeseries + (1 - wind_share) * self.solar_timeseries
+        G = self.total_generation(wind_share)
         return float(G.std())
 
     def generation_share_wind(self, wind_share):
@@ -190,11 +200,11 @@ shdf = salem.read_shapefile(shape_path + "EEZ_Land_v3_202030.shp")
 
 wind_shares, multidec_std = {}, {}
 
-for annual in [False, True]:
+for data_timescale in ["seasonal", "multidecadal"]:
     # load wind and solar
-    combined_solar = combined_generation(Solar, annual)
-    combined_wind = combined_generation(Wind, annual)
-    if annual:
+    combined_solar = combined_generation(Solar, data_timescale == "multidecadal")
+    combined_wind = combined_generation(Wind, data_timescale == "multidecadal")
+    if data_timescale == "multidecadal":
         # annual solar data is lagging behind 90 mins compared to wind
         combined_solar["time"] += pd.Timedelta(
             90, unit="m"
@@ -220,8 +230,8 @@ for annual in [False, True]:
         "wind_power"
     ].mean("time")
 
-    wind_shares[annual], multidec_std[annual] = {}, {}
-    for country_group in country_groups:
+    wind_shares[data_timescale], multidec_std[data_timescale] = {}, {}
+    for country_group in country_groups[:2]:
         print(country_group[0])
 
         # restrict wind and solar data to country group under investigation
@@ -240,19 +250,25 @@ for annual in [False, True]:
         res = minimize_scalar(cf.std_total_generation, bounds=(0, 1), method="Bounded")
 
         # store results
-        wind_shares[annual][country_group[0]] = (
+        wind_shares[data_timescale][", ".join(country_group)] = (
             np.round(res.x, 2),
             np.round(cf.generation_share_wind(res.x), 2),
         )
-        print(wind_shares)
+        print(
+            wind_shares
+        )
         if (
-            annual
+            data_timescale == "multidecadal"
         ):  # apply wind share that is optimal for seasonal scale to multidecadal generation data
-            multidec_std[annual][country_group[0]] = cf.std_total_generation(
-                wind_shares[False][country_group[0]][0]
+            multidec_std["seasonal"][", ".join(country_group)] = np.round(
+                cf.std_total_generation(
+                    wind_shares["seasonal"][", ".join(country_group)][0]
+                ),
+                3,
             )
-        else:
-            multidec_std[annual][country_group[0]] = cf.std_total_generation(res.x)
+            multidec_std["multidecadal"][", ".join(country_group)] = np.round(
+                cf.std_total_generation(res.x), 3
+            )
 
 pd.DataFrame.from_dict(data=wind_shares).to_latex(
     Wind.base_path + "output/optimization/wind_shares.csv"
