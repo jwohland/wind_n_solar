@@ -1,5 +1,5 @@
 import salem
-from salem.utils import get_demo_file
+# from salem.utils import get_demo_file
 import xarray as xr
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ import pandas as pd
 
 
 sys.path.append("../")
-from utils import plot_field, Generation_type
+from utils import plot_field, Generation_type, add_letters
 
 country_groups = [
     ["United Kingdom", "Ireland"],
@@ -40,7 +40,7 @@ if shall_plot_domains:
     plot_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/plots/optimization/country_domains"
     shape_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/data/shapefile/EEZ_land_union_v3_202003/"
     path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/data/CERA20C/annual/"
-    ds = xr.open_dataset(path + "annual_CERA20C_multiple_1949.nc")
+    ds = xr.open_dataset(path + "annual_CERA20C_multiple_1949.nc")  # some example data
 
     # uncomment if onshore only
     # shdf = salem.read_shapefile(get_demo_file("world_borders.shp"))
@@ -54,8 +54,9 @@ if shall_plot_domains:
         ds_tmp = ds.salem.roi(shape=shdf_tmp, all_touched=True)["s100"].sel(
             {"number": 0}
         )
+        ds_tmp.name = ", ".join(country_group)
         N_gridboxes = np.isfinite(ds_tmp.values).sum()
-        ds_tmp.salem.quick_map()
+        ds_tmp.drop(["time", "number"]).salem.quick_map()
         plt.savefig(
             plot_path + "/" + country_group[0] + "_N_" + str(N_gridboxes) + ".jpeg",
             dpi=300,
@@ -111,9 +112,8 @@ Wind = Generation_type(
 shall_plot_CFs = False
 if shall_plot_CFs:
     # wind
-
     f, ax = plt.subplots(
-        ncols=4, figsize=(12, 6), subplot_kw={"projection": ccrs.PlateCarree()}
+        ncols=4, figsize=(12, 4), subplot_kw={"projection": ccrs.PlateCarree()}
     )
     cbar_ax = f.add_axes([0.3, 0.15, 0.4, 0.03])
     for i, scenario in enumerate(Wind.scenarios):
@@ -142,6 +142,8 @@ if shall_plot_CFs:
             "label": "Mean wind capacity factor (1980 - 2000)",
         },
     )
+    add_letters(ax)
+    plt.subplots_adjust(0.03, 0.15, 0.97, 0.98)
     plt.savefig(Wind.plot_path + "test_masked_monthly_CF.jpeg", dpi=200)
 
     # solar
@@ -167,12 +169,20 @@ class cost_function:
 
     def total_generation(self, wind_share):
         """
-        Sum of wind and solar generation, normalized to unit mean
+        Sum of wind and solar generation, normalized to unit mean.
+
+        Normalization is chosen to enable meaningful optimization. Without normalization, systems with high PV installed
+        capacities have lower absolute generation (because average PV capacity factors are lower than average wind
+        capacity factors). Consequently, also the absolute standard deviation of such systems tends to be lower.
+
+        The normalization compensates this effect.
+
+
         :param wind_share: share of wind capacity
         :return:
         """
         G = wind_share * self.wind_timeseries + (1 - wind_share) * self.solar_timeseries
-        G /= G.mean("time")
+        G /= G.mean("time")  # normalize to unit mean, see docstring for justification
         return G
 
     def std_total_generation(self, wind_share):
@@ -208,7 +218,7 @@ for data_timescale in ["seasonal", "multidecadal"]:
         # annual solar data is lagging behind 90 mins compared to wind
         combined_solar["time"] += pd.Timedelta(
             90, unit="m"
-        )  # Solar power is 1:30h shifted back
+        )
         # add 20y running mean filter and ensure same time coverage
         combined_solar = (
             combined_solar.chunk({"time": 109, "lat": 1})
@@ -264,6 +274,7 @@ for data_timescale in ["seasonal", "multidecadal"]:
             multidec_amplitude["seasonal"][", ".join(country_group)] = float(
                 np.round((G.max() - G.min()) / G.min() * 100, 1)
             )
+            # apply wind share that is optimal for multidecadal scale to multidecadal generation data
             G = cf.total_generation(res.x)
             multidec_amplitude["multidecadal"][", ".join(country_group)] = float(
                 np.round((G.max() - G.min()) / G.min() * 100, 1)
