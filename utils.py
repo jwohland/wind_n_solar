@@ -351,7 +351,7 @@ class Generation_type:
 
     def open_data_monthly_ensmean(self, scenario):
         """
-        Open 3h data from 1990 to 2010, calculate monthly mean and ensemble mean
+        Open 3h data from 1980 to 2000, calculate monthly mean and ensemble mean
         :param scenario:
         :return:
         """
