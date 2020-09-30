@@ -1,4 +1,5 @@
 import salem
+
 # from salem.utils import get_demo_file
 import xarray as xr
 import cartopy.crs as ccrs
@@ -7,6 +8,7 @@ import numpy as np
 import sys
 from scipy.optimize import minimize_scalar
 import pandas as pd
+import pickle
 
 
 sys.path.append("../")
@@ -158,11 +160,11 @@ if shall_plot_CFs:
 
 
 """
-3) Conflicting optimization
+3) Conflicting optimization locally
 """
 
 
-class cost_function:
+class LocalCostFunction:
     def __init__(self, solar_timeseries, wind_timeseries):
         self.solar_timeseries = solar_timeseries
         self.wind_timeseries = wind_timeseries
@@ -208,7 +210,7 @@ class cost_function:
 shape_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/data/shapefile/EEZ_land_union_v3_202003/"
 shdf = salem.read_shapefile(shape_path + "EEZ_Land_v3_202030.shp")
 
-wind_shares, multidec_amplitude = {}, {}
+wind_shares, multidec_amplitude, country_generation = {}, {}, {}
 
 for data_timescale in ["seasonal", "multidecadal"]:
     # load wind and solar
@@ -216,9 +218,7 @@ for data_timescale in ["seasonal", "multidecadal"]:
     combined_wind = combined_generation(Wind, data_timescale == "multidecadal")
     if data_timescale == "multidecadal":
         # annual solar data is lagging behind 90 mins compared to wind
-        combined_solar["time"] += pd.Timedelta(
-            90, unit="m"
-        )
+        combined_solar["time"] += pd.Timedelta(90, unit="m")
         # add 20y running mean filter and ensure same time coverage
         combined_solar = (
             combined_solar.chunk({"time": 109, "lat": 1})
@@ -241,7 +241,9 @@ for data_timescale in ["seasonal", "multidecadal"]:
     ].mean("time")
 
     wind_shares[data_timescale], multidec_amplitude[data_timescale] = {}, {}
+    country_generation[data_timescale] = {}
     for country_group in country_groups:
+        country_generation[data_timescale][", ".join(country_group)] = {}
         print(country_group[0])
 
         # restrict wind and solar data to country group under investigation
@@ -251,12 +253,18 @@ for data_timescale in ["seasonal", "multidecadal"]:
             "wind_power"
         ]
 
-        # average over entire domain
+        # average over entire domain and store in dict
         solar_timeseries = (C_solar * solar_country).mean(["lat", "lon"]).compute()
         wind_timeseries = (C_wind * wind_country).mean(["lat", "lon"]).compute()
+        country_generation[data_timescale][", ".join(country_group)][
+            "solar"
+        ] = solar_timeseries
+        country_generation[data_timescale][", ".join(country_group)][
+            "wind"
+        ] = wind_timeseries
 
         # optimize
-        cf = cost_function(solar_timeseries, wind_timeseries)
+        cf = LocalCostFunction(solar_timeseries, wind_timeseries)
         res = minimize_scalar(cf.std_total_generation, bounds=(0, 1), method="Bounded")
 
         # store results
@@ -286,3 +294,72 @@ pd.DataFrame.from_dict(data=wind_shares).to_latex(
 pd.DataFrame.from_dict(data=multidec_amplitude).to_latex(
     Wind.base_path + "output/optimization/multidec_amplitude.csv"
 )
+with open(base_path + "output/country_generation.pickle", "wb") as handle:
+    pickle.dump(country_generation, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+"""
+4) Optimize non-locally
+"""
+
+
+class GlobalCostFunction:
+    def __init__(self, country_generation, gen_type, data_timescale):
+        self.country_generation = country_generation[data_timescale]
+        self.gen_type = gen_type
+
+    def total_generation(self, alpha):
+        G = (
+            alpha[0] * self.country_generation["United Kingdom, Ireland"][self.gen_type]
+            + alpha[1] * self.country_generation["Portugal, Spain"][self.gen_type]
+            + alpha[2]
+            * self.country_generation["France, Belgium, Netherlands"][self.gen_type]
+            + alpha[3] * self.country_generation["Germany, Denmark"][self.gen_type]
+            + alpha[4]
+            * self.country_generation["Italy, Austria, Switzerland, Slovenia"][
+                self.gen_type
+            ]
+            + alpha[5] * self.country_generation["Sweden, Norway"][self.gen_type]
+            + alpha[6]
+            * self.country_generation["Poland, Czech Republic, Slovakia, Hungary"][
+                self.gen_type
+            ]
+            + alpha[7]
+            * self.country_generation["Lithuania, Latvia, Estonia, Finland"][
+                self.gen_type
+            ]
+            + alpha[8]
+            * self.country_generation[
+                "Greece, Bulgaria, Serbia, Croatia, Bosnia and Herzogovina, Romania, Albania"
+            ][self.gen_type]
+        )
+        G /= G.mean("time")  # todo think this through thoroughly! Currently favours countries with low capacity factors! BAD.
+        return G
+
+    def std_total_generation(self, alpha):
+        return float(self.total_generation(alpha).std())
+
+    def share_dictionary(self, alpha, country_groups):
+        sd = {}
+        for i, country_group in enumerate(country_groups):
+            sd[", ".join(country_group)] = np.round(alpha[i]*100, 1)
+        return sd
+
+
+from scipy import optimize
+# constraints:
+# sum over all alpha entries equals 1
+# each alpha entry non negative and smaller than 0.2
+m = np.zeros((10, 9))
+m[0,:] = 1
+for i in range(9):
+    m[i+1, i] = 1
+lower_bounds = [1] + [0.055]*9
+upper_bounds = [1] + [0.22]*9
+linear_constraint = optimize.LinearConstraint(m, lower_bounds, upper_bounds)
+alpha0 = [1./9]*9
+
+for data_timescale in country_generation.keys():
+    for gen_type in ["wind", "solar"]:
+        cf = GlobalCostFunction(country_generation, gen_type, data_timescale)
+        res = optimize.minimize(cf.std_total_generation, alpha0, method="trust-constr", constraints=[linear_constraint])
+        cf.share_dictionary(res.x, country_groups)
