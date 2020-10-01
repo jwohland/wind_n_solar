@@ -300,66 +300,112 @@ with open(base_path + "output/country_generation.pickle", "wb") as handle:
 """
 4) Optimize non-locally
 """
+with open(base_path + "output/country_generation.pickle", "rb") as handle:
+    country_generation = pickle.load(handle)
 
 
 class GlobalCostFunction:
-    def __init__(self, country_generation, gen_type, data_timescale):
+    def __init__(self, country_generation, gen_type, data_timescale, country_groups):
         self.country_generation = country_generation[data_timescale]
         self.gen_type = gen_type
+        self.country_groups = country_groups
 
     def total_generation(self, alpha):
         G = (
-            alpha[0] * self.country_generation["United Kingdom, Ireland"][self.gen_type]
-            + alpha[1] * self.country_generation["Portugal, Spain"][self.gen_type]
-            + alpha[2]
-            * self.country_generation["France, Belgium, Netherlands"][self.gen_type]
-            + alpha[3] * self.country_generation["Germany, Denmark"][self.gen_type]
-            + alpha[4]
-            * self.country_generation["Italy, Austria, Switzerland, Slovenia"][
-                self.gen_type
-            ]
-            + alpha[5] * self.country_generation["Sweden, Norway"][self.gen_type]
-            + alpha[6]
-            * self.country_generation["Poland, Czech Republic, Slovakia, Hungary"][
-                self.gen_type
-            ]
-            + alpha[7]
-            * self.country_generation["Lithuania, Latvia, Estonia, Finland"][
-                self.gen_type
-            ]
-            + alpha[8]
-            * self.country_generation[
-                "Greece, Bulgaria, Serbia, Croatia, Bosnia and Herzogovina, Romania, Albania"
-            ][self.gen_type]
+            alpha[0]
+            * self.country_generation[", ".join(self.country_groups[0])][self.gen_type]
         )
-        G /= G.mean("time")  # todo think this through thoroughly! Currently favours countries with low capacity factors! BAD.
+        for i in range(1, 9):
+            G += (
+                alpha[i]
+                * self.country_generation[", ".join(self.country_groups[i])][
+                    self.gen_type
+                ]
+            )
+        G /= G.mean(
+            "time"
+        )  # todo think this through thoroughly! Currently favours countries with low capacity factors! BAD.
         return G
 
     def std_total_generation(self, alpha):
         return float(self.total_generation(alpha).std())
 
-    def share_dictionary(self, alpha, country_groups):
+    def share_dictionary(self, alpha):
         sd = {}
-        for i, country_group in enumerate(country_groups):
-            sd[", ".join(country_group)] = np.round(alpha[i]*100, 1)
+        for i, country_group in enumerate(self.country_groups):
+            sd[", ".join(country_group)] = str(np.round(alpha[i] * 100, 1))
         return sd
 
 
 from scipy import optimize
-# constraints:
-# sum over all alpha entries equals 1
-# each alpha entry non negative and smaller than 0.2
-m = np.zeros((10, 9))
-m[0,:] = 1
-for i in range(9):
-    m[i+1, i] = 1
-lower_bounds = [1] + [0.055]*9
-upper_bounds = [1] + [0.22]*9
-linear_constraint = optimize.LinearConstraint(m, lower_bounds, upper_bounds)
-alpha0 = [1./9]*9
+import numpy as np
 
+alpha_current = [
+    0.146,
+    0.159,
+    0.126,
+    0.345,
+    0.072,
+    0.058,
+    0.034,
+    0.017,
+    0.043,
+]  # from IRENA RENEWABLE CAPACITY STATISTICS 2020
+# constraints:
+m = np.zeros((10, 9))
+# sum over all alpha entries equals 1
+m[0, :] = 1
+
+# each alpha entry non negative and smaller than 0.2
+for i in range(9):
+    m[i + 1, i] = 1
+lower_bounds = [1] + [np.max([x - 0.1, 0]) for x in alpha_current]
+upper_bounds = [1] + [np.max([x + 0.1, 0]) for x in alpha_current]
+linear_constraint = optimize.LinearConstraint(m, lower_bounds, upper_bounds)
+alpha0 = [1.0 / 9] * 9
+
+
+shares_dict = {}
 for data_timescale in country_generation.keys():
     for gen_type in ["wind", "solar"]:
-        cf = GlobalCostFunction(country_generation, gen_type, data_timescale)
-        res = optimize.minimize(cf.std_total_generation, alpha0, method="trust-constr", constraints=[linear_constraint])
-        cf.share_dictionary(res.x, country_groups)
+        cf = GlobalCostFunction(
+            country_generation, gen_type, data_timescale, country_groups
+        )
+        res = optimize.minimize(
+            cf.std_total_generation,
+            alpha0,
+            method="trust-constr",
+            constraints=[linear_constraint],
+        )
+        shares_dict[gen_type + " opt. " + data_timescale] = cf.share_dictionary(res.x)
+
+        cf_m = GlobalCostFunction(
+            country_generation, gen_type, "multidecadal", country_groups
+        )
+        cf_s = GlobalCostFunction(
+            country_generation, gen_type, "seasonal", country_groups
+        )
+        G_s = cf_s.total_generation(res.x)
+        G_m = cf_m.total_generation(res.x)
+        shares_dict[gen_type + " opt. " + data_timescale][
+            "Seasonal amplitude combined"
+        ] = float(np.round((G_s.max() - G_s.min()) / G_s.min() * 100, 1))
+        shares_dict[gen_type + " opt. " + data_timescale][
+            "Multidecadal amplitude combined"
+        ] = float(np.round((G_m.max() - G_m.min()) / G_m.min() * 100, 1))
+        if gen_type == "wind" and data_timescale == "multidecadal":
+            shares_dict[gen_type + " current " + data_timescale] = cf.share_dictionary(
+                alpha_current
+            )
+            G_s = cf_s.total_generation(alpha_current)
+            G_m = cf_m.total_generation(alpha_current)
+            shares_dict[gen_type + " current " + data_timescale][
+                "Seasonal amplitude combined"
+            ] = float(np.round((G_s.max() - G_s.min()) / G_s.min() * 100, 1))
+            shares_dict[gen_type + " current " + data_timescale][
+                "Multidecadal amplitude combined"
+            ] = float(np.round((G_m.max() - G_m.min()) / G_m.min() * 100, 1))
+
+pd.DataFrame.from_dict(data=shares_dict).to_latex(
+    Wind.base_path + "output/optimization/spatial.csv"
+)
