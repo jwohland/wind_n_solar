@@ -305,10 +305,19 @@ with open(base_path + "output/country_generation.pickle", "rb") as handle:
 
 
 class GlobalCostFunction:
-    def __init__(self, country_generation, gen_type, data_timescale, country_groups):
+    def __init__(self, country_generation, gen_type, data_timescale, country_groups, cost_function_weight=0.003):
+        """
+
+        :param country_generation:
+        :param gen_type:
+        :param data_timescale:
+        :param country_groups:
+        :param cost_function_weight: default 0.003 represents equal weith to both terms in cost function for current shares
+        """
         self.country_generation = country_generation[data_timescale]
         self.gen_type = gen_type
         self.country_groups = country_groups
+        self.cost_function_weight = cost_function_weight
 
     def total_generation(self, alpha):
         G = (
@@ -322,13 +331,13 @@ class GlobalCostFunction:
                     self.gen_type
                 ]
             )
-        G /= G.mean(
-            "time"
-        )  # todo think this through thoroughly! Currently favours countries with low capacity factors! BAD.
         return G
 
-    def std_total_generation(self, alpha):
-        return float(self.total_generation(alpha).std())
+    def cost_function(self, alpha):
+        G = self.total_generation(alpha)
+        term1 = float((G / G.mean("time")).std())
+        term2 = self.cost_function_weight * 1./G.mean("time")
+        return term1 + term2
 
     def share_dictionary(self, alpha):
         sd = {}
@@ -359,20 +368,23 @@ m[0, :] = 1
 # each alpha entry non negative and smaller than 0.2
 for i in range(9):
     m[i + 1, i] = 1
-lower_bounds = [1] + [np.max([x - 0.1, 0]) for x in alpha_current]
-upper_bounds = [1] + [np.max([x + 0.1, 0]) for x in alpha_current]
+# lower_bounds = [1] + [np.max([x - 0.1, 0]) for x in alpha_current]
+# upper_bounds = [1] + [np.max([x + 0.1, 0]) for x in alpha_current]
+lower_bounds = [1, 0.024, 0.026, 0.021, 0.058, 0.012, 0.010, 0.006, 0.003, 0.007]
+upper_bounds = [1, 0.287, 0.142, 0.225, 0.242, 0.115, 0.459, 0.120, 0.311, 0.207]
+
+
 linear_constraint = optimize.LinearConstraint(m, lower_bounds, upper_bounds)
 alpha0 = [1.0 / 9] * 9
 
-
 shares_dict = {}
 for data_timescale in country_generation.keys():
-    for gen_type in ["wind", "solar"]:
+    for gen_type in ["wind"]:  # , "solar"]:
         cf = GlobalCostFunction(
             country_generation, gen_type, data_timescale, country_groups
         )
         res = optimize.minimize(
-            cf.std_total_generation,
+            cf.cost_function,
             alpha0,
             method="trust-constr",
             constraints=[linear_constraint],
@@ -407,5 +419,5 @@ for data_timescale in country_generation.keys():
             ] = float(np.round((G_m.max() - G_m.min()) / G_m.min() * 100, 1))
 
 pd.DataFrame.from_dict(data=shares_dict).to_latex(
-    Wind.base_path + "output/optimization/spatial.csv"
+    Wind.base_path + "output/optimization/spatial_cfweight" + str(int(cf_weight*100)) + ".csv"
 )
