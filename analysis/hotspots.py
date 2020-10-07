@@ -8,7 +8,7 @@ import glob
 import sys
 
 sys.path.append("../")
-from utils import plot_field, load_solar_ensemble, Generation_type
+from utils import plot_field, load_solar_ensemble, Generation_type, add_letters
 import cartopy.crs as ccrs
 import numpy as np
 
@@ -42,7 +42,13 @@ def relative_change(ds):
 
 
 def plot_hotspot(
-    Generation, delta_power, all_power, rel, scenario, ensemblemean=False,
+    Generation,
+    delta_power,
+    all_power,
+    rel,
+    scenario,
+    ensemblemean=False,
+    letter_offset=0,
 ):
     """
 
@@ -53,7 +59,15 @@ def plot_hotspot(
     :return:
     """
     # prepare plotting
-    cmap = mpl.cm.get_cmap("coolwarm")
+    cmap = mpl.cm.get_cmap("YlOrBr")
+    title_dict = {
+        "E-126_7580": "Wind turbine E-126_7580",
+        "SWT120_3600": "Wind turbine SWT120_3600",
+        "SWT142_3150": "Wind turbine SWT142_3150",
+        "both_constant": "Solar constant panel geometry",
+        "tilt_constant": "Solar variable azimuth",
+        "neither_constant": "Solar variable azimuth and tilt",
+    }
     plt.close("all")
     if ensemblemean:
         f, ax = plt.subplots(
@@ -66,19 +80,19 @@ def plot_hotspot(
             subplot_kw={"projection": ccrs.PlateCarree()},
             figsize=(12, 5),
         )
-    cbar_ax = f.add_axes([0.15, 0.1, 0.7, 0.03])
+    cbar_ax = f.add_axes([0.15, 0.12, 0.7, 0.03])
     vmax = np.round(delta_power[Generation.var].values.max() * 1.1, 2)
     label_name = "Max - Min 20y " + Generation.name + " power"
     if rel:
         vmax = 20
-        label_name = "(Max - Min)/Min 20y " + Generation.name + "power [%]"
+        label_name = r"Amplitude of multidecadal variability   $\frac{G_\mathrm{max} -G_\mathrm{min}}{G_\mathrm{min}}$ [%]"
     if ensemblemean:
-        plot_field(
+        map_plot = plot_field(
             delta_power.mean("number")[Generation.var],
             ax=ax,
-            title="ensemble mean",
             cmap=cmap,
             add_colorbar=True,
+            title=title_dict[scenario],
             cbar_ax=cbar_ax,
             cbar_kwargs={"orientation": "horizontal", "label": label_name},
             vmin=0,
@@ -95,6 +109,7 @@ def plot_hotspot(
             add_colorbar=False,
             add_labels=False,
         )
+        add_letters(ax, x=-0.04, y=1.01, fs=12, letter_offset=letter_offset)
     else:
         for i, number in enumerate(all_power.number.values):
             plot_field(
@@ -120,8 +135,8 @@ def plot_hotspot(
                 add_labels=False,
             )
 
-    plt.subplots_adjust(left=0.05, right=0.92, bottom=0.18)
-    plt.suptitle(scenario)
+    plt.subplots_adjust(left=0.05, right=0.96, top=0.95, bottom=0.18)
+
     plotname = "_hotspots"
     if rel:
         plotname += "_rel"
@@ -138,8 +153,9 @@ def plot_hotspot(
     )
 
 
+
 def plot_CDFs(Generation, cf_mins=[0.3, 0.2]):
-    #cf_mins.append(Generation.CF_threshold)
+    # cf_mins.append(Generation.CF_threshold)
     mpl.rcParams["axes.spines.left"] = True
     mpl.rcParams["axes.spines.bottom"] = True
     f, ax = plt.subplots(ncols=3, figsize=(15, 5))
@@ -149,12 +165,12 @@ def plot_CDFs(Generation, cf_mins=[0.3, 0.2]):
         all_power = all_power.rolling(time=20, center=True).mean().dropna("time")
         cf_inc = cf_mins[1] - cf_mins[0]
         for j, cf_min in enumerate(cf_mins):
-            #if j == 2:  # all locations with CF larger than threshold
+            # if j == 2:  # all locations with CF larger than threshold
             #    masked_power = all_power.where(
             #       (all_power[Generation.var].mean(dim=["time", "number"]) > cf_min)
             #    )
             #    title = "CF > " + str(cf_min)
-            #else:
+            # else:
             # locations within a CF band
             masked_power = all_power.where(
                 (all_power[Generation.var].mean(dim=["time", "number"]) > cf_min)
@@ -166,10 +182,7 @@ def plot_CDFs(Generation, cf_mins=[0.3, 0.2]):
             title = str(np.round(cf_min + cf_inc, 2)) + " > CF > " + str(cf_min)
             delta_power = relative_change(masked_power[Generation.var])
             plot_CDF(
-                delta_power,
-                ax[j],
-                title,
-                scenario,
+                delta_power, ax[j], title, scenario,
             )
 
     ax[0].set_ylabel("Cumulative density function")
@@ -198,9 +211,9 @@ Wind = Generation_type(
     base_path,
 )
 
-for Generation in [Solar, Wind]:
-    for rel in [True, False]:
-        for scenario in Generation.scenarios:
+for rel in [True, False]:
+    for i, Generation in enumerate([Wind, Solar]):
+        for j, scenario in enumerate(Generation.scenarios):
             # load data
             all_power = Generation.open_data(scenario).load()
             # evaluate data
@@ -210,7 +223,13 @@ for Generation in [Solar, Wind]:
                 delta_power *= 100.0 / all_power.min(dim="time")
             plot_hotspot(Generation, delta_power, all_power, rel, scenario)
             plot_hotspot(
-                Generation, delta_power, all_power, rel, scenario, ensemblemean=True
+                Generation,
+                delta_power,
+                all_power,
+                rel,
+                scenario,
+                ensemblemean=True,
+                letter_offset=3 * i + j,
             )
 
 ###
