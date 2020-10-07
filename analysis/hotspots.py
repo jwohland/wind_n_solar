@@ -12,8 +12,19 @@ from utils import plot_field, load_solar_ensemble, Generation_type, add_letters
 import cartopy.crs as ccrs
 import numpy as np
 
+TITLE_DICT = {
+    "E-126_7580": "Wind turbine E-126_7580",
+    "SWT120_3600": "Wind turbine SWT120_3600",
+    "SWT142_3150": "Wind turbine SWT142_3150",
+    "both_constant": "Solar constant panel geometry",
+    "tilt_constant": "Solar variable azimuth",
+    "neither_constant": "Solar variable azimuth and tilt",
+}
 
-def plot_CDF(ds, ax, title, scenario):
+COLORS = {"wind": ["Olive", "forestgreen", "yellowgreen"],
+          "solar": ["darkgoldenrod", "darkorange", "darkkhaki"]}
+
+def plot_CDF(ds, ax, title, scenario, color):
     """
     plots CDF of dataset ds with variable wind_power on axis ax
     :param ds:
@@ -28,7 +39,9 @@ def plot_CDF(ds, ax, title, scenario):
         bins=3000,
         density=True,
         histtype="step",
-        label=scenario,
+        label=TITLE_DICT[scenario],
+        linewidth=1.7,
+        color=color
     )
     ax.set_title(title)
 
@@ -60,14 +73,6 @@ def plot_hotspot(
     """
     # prepare plotting
     cmap = mpl.cm.get_cmap("YlOrBr")
-    title_dict = {
-        "E-126_7580": "Wind turbine E-126_7580",
-        "SWT120_3600": "Wind turbine SWT120_3600",
-        "SWT142_3150": "Wind turbine SWT142_3150",
-        "both_constant": "Solar constant panel geometry",
-        "tilt_constant": "Solar variable azimuth",
-        "neither_constant": "Solar variable azimuth and tilt",
-    }
     plt.close("all")
     if ensemblemean:
         f, ax = plt.subplots(
@@ -92,7 +97,7 @@ def plot_hotspot(
             ax=ax,
             cmap=cmap,
             add_colorbar=True,
-            title=title_dict[scenario],
+            title=TITLE_DICT[scenario],
             cbar_ax=cbar_ax,
             cbar_kwargs={"orientation": "horizontal", "label": label_name},
             vmin=0,
@@ -153,46 +158,57 @@ def plot_hotspot(
     )
 
 
-
-def plot_CDFs(Generation, cf_mins=[0.3, 0.2]):
-    # cf_mins.append(Generation.CF_threshold)
+def plot_CDFs(Generations, cf_mins):
+    """
+    Plots cumulative density functionfor capacity factor bands defined in
+    :param Generations: list of Generation_type
+    :param cf_mins: dictionary with keys Generation type and entries defining cf ranges
+    :return:
+    """
     mpl.rcParams["axes.spines.left"] = True
     mpl.rcParams["axes.spines.bottom"] = True
-    f, ax = plt.subplots(ncols=3, figsize=(15, 5))
-    for i, scenario in enumerate(Generation.scenarios):
-        all_power = Generation.open_data(scenario).load()
-        # evaluate data
-        all_power = all_power.rolling(time=20, center=True).mean().dropna("time")
-        cf_inc = cf_mins[1] - cf_mins[0]
-        for j, cf_min in enumerate(cf_mins):
-            # if j == 2:  # all locations with CF larger than threshold
-            #    masked_power = all_power.where(
-            #       (all_power[Generation.var].mean(dim=["time", "number"]) > cf_min)
-            #    )
-            #    title = "CF > " + str(cf_min)
-            # else:
-            # locations within a CF band
-            masked_power = all_power.where(
-                (all_power[Generation.var].mean(dim=["time", "number"]) > cf_min)
-                & (
-                    all_power[Generation.var].mean(dim=["time", "number"])
-                    < cf_min + cf_inc
+    f, ax = plt.subplots(ncols=3, nrows=2, figsize=(13, 8))
+    for j, Generation in enumerate(Generations):
+        for i, scenario in enumerate(Generation.scenarios):
+            all_power = Generation.open_data(scenario).load()
+            # evaluate data
+            all_power = all_power.rolling(time=20, center=True).mean().dropna("time")
+            cf_inc = cf_mins[Generation.name][1] - cf_mins[Generation.name][0]
+            for k, cf_min in enumerate(cf_mins[Generation.name]):
+                # locations within a CF band
+                masked_power = all_power.where(
+                    (all_power[Generation.var].mean(dim=["time", "number"]) > cf_min)
+                    & (
+                        all_power[Generation.var].mean(dim=["time", "number"])
+                        < cf_min + cf_inc
+                    )
                 )
-            )
-            title = str(np.round(cf_min + cf_inc, 2)) + " > CF > " + str(cf_min)
-            delta_power = relative_change(masked_power[Generation.var])
-            plot_CDF(
-                delta_power, ax[j], title, scenario,
-            )
+                title = (
+                    str(cf_min)
+                    + " < CF < "
+                    + str(np.round(cf_min + cf_inc, 2))
+                )
 
-    ax[0].set_ylabel("Cumulative density function")
-    for i in range(3):
-        ax[i].set_xlabel(r"$\frac{P_{max} - P_{min}}{P_{min}}$ [%]")  #
-        ax[i].set_xlim(xmin=0, xmax=15)
-        ax[i].grid(True)
-    ax[0].legend(loc=2)
-    plt.tight_layout()
-    plt.savefig(Generation.plot_path + "/" + Generation.name + "/CDF_rel.png")
+                delta_power = relative_change(masked_power[Generation.var])
+                plot_CDF(
+                    delta_power, ax[j, k], title, scenario, color=COLORS[Generation.name][i]
+                )
+
+    for j in range(2):
+        ax[j, 0].set_ylabel(["Wind", "Solar"][j] + " CDF", fontsize=12)
+        for i in range(3):
+            ax[j, 1].set_xlabel(
+                r"Amplitude of multidecadal variability   $\frac{G_\mathrm{max} -G_\mathrm{min}}{G_\mathrm{min}}$ [%]", fontsize=12
+            )  #
+            ax[j, i].set_xlim(xmin=0, xmax=14.5)
+            ax[j, i].set_xticks(np.arange(2, 15, 2))
+            ax[j, i].grid(True)
+        ax[j, 1].legend(bbox_to_anchor=(-1, -.32, 3, .09), loc="center", borderaxespad=0., ncol=3, frameon=False)
+
+
+    plt.subplots_adjust(0.06, 0.11, 0.97, 0.96, None, 0.435)
+    add_letters(ax, fs=12)
+    plt.savefig(Generation.plot_path + "/CDF_rel.png")
 
 
 base_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/"
@@ -235,5 +251,4 @@ for rel in [True, False]:
 ###
 # CDF analysis
 ###
-plot_CDFs(Solar, [0.1, 0.15, 0.2])
-plot_CDFs(Wind, [0.15, 0.25, 0.35])
+plot_CDFs([Wind, Solar], {"solar": [0.1, 0.15, 0.2], "wind": [0.15, 0.25, 0.35]})
