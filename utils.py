@@ -246,7 +246,7 @@ def plot_field(data, ax=None, title=None, **kwargs):
     return ax
 
 
-def add_letters(ax, x=-0.8, y=1.02, fs=10, letter_offset=0):
+def add_letters(ax, x=-0.08, y=1.02, fs=10, letter_offset=0):
     """
     adds bold letters a,b,c,... to the upper left corner of subplots
     :param ax: axis
