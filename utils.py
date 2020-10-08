@@ -246,7 +246,7 @@ def plot_field(data, ax=None, title=None, **kwargs):
     return ax
 
 
-def add_letters(ax, x=-0.1, y=1.03, fs=10):
+def add_letters(ax, x=-0.8, y=1.02, fs=10, letter_offset=0):
     """
     adds bold letters a,b,c,... to the upper left corner of subplots
     :param ax: axis
@@ -273,9 +273,29 @@ def add_letters(ax, x=-0.1, y=1.03, fs=10):
         "o",
         "p",
     ]
-    for il, tmp_ax in enumerate(ax.flat):
-        tmp_ax.text(
-            x, y, letters[il], weight="bold", transform=tmp_ax.transAxes, fontsize=fs
+    try:
+        ax.flat
+        for il, tmp_ax in enumerate(ax.flat):
+            tmp_ax.text(
+                x,
+                y,
+                letters[il + letter_offset],
+                weight="bold",
+                horizontalalignment="center",
+                verticalalignment="center",
+                transform=tmp_ax.transAxes,
+                fontsize=fs,
+            )
+    except AttributeError:
+        ax.text(
+            x,
+            y,
+            letters[letter_offset],
+            weight="bold",
+            horizontalalignment="center",
+            verticalalignment="center",
+            transform=ax.transAxes,
+            fontsize=fs,
         )
 
 
@@ -296,8 +316,10 @@ def load_solar_ensemble(base_path, data_path, annual=True):
             )
         else:
             filelist = sorted(
-                glob.glob(base_path + data_path + "*198*number_" + str(number) + "*.nc") +
-                glob.glob(base_path + data_path + "*199*number_" + str(number) + "*.nc")
+                glob.glob(base_path + data_path + "*198*number_" + str(number) + "*.nc")
+                + glob.glob(
+                    base_path + data_path + "*199*number_" + str(number) + "*.nc"
+                )
             )
         all_power_list.append(xr.open_mfdataset(filelist, combine="by_coords"))
     return xr.concat(all_power_list, pd.Index(range(10), name="number"))
@@ -436,13 +458,14 @@ def calc_correlations_xarray(ds1, ds2, var1, var2, measure):
     return res
 
 
-def add_row_label(ax, text):
+def add_row_label(ax, text, fs=None, x=-0.1, y=0.5):
     ax.text(
-        -0.1,
-        0.5,
+        x,
+        y,
         text,
         horizontalalignment="center",
         rotation=90,
         verticalalignment="center",
         transform=ax.transAxes,
+        fontsize=fs,
     )
