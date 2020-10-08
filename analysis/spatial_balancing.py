@@ -163,6 +163,14 @@ plot_histograms(
     [0] * 9, [x / np.sum(solar_shares) * 100 for x in solar_shares], "current_solaronly"
 )
 
-#even distribution of wind or solar while keeping total solar to total wind ratio untouched
+# even distribution of wind or solar while keeping total solar to total wind ratio untouched
 plot_histograms([np.mean(wind_shares)] * 9, solar_shares, "even_wind")
+plot_histograms(wind_shares, [np.mean(solar_shares)]*9, "even_solar")
 plot_histograms([np.mean(wind_shares)] * 9, [np.mean(solar_shares)] * 9, "even_both")
+
+# keeping inter-country distribution of wind and solar untouched while changing the continental wind/solar share
+def rescale(shares, target_share):
+    return [x/np.sum(shares)*target_share for x in shares]
+
+plot_histograms(rescale(wind_shares, 40), rescale(solar_shares, 60), "windshare_40")
+plot_histograms(rescale(wind_shares, 80), rescale(solar_shares, 20), "windshare_80")
