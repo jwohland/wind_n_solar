@@ -244,12 +244,24 @@ if joint:
         # prepare plots
         cmap = mpl.cm.get_cmap("RdBu_r")
         plt.close("all")
-        f = plt.figure(figsize=(12, 10))
-        ax = [plt.subplot(3, N_EOFs, i, projection= ccrs.PlateCarree()) for i in range(1,9)]
-        ax.extend([plt.subplot(3, N_EOFs, i) for i in range(9, 13)])
-        ax = np.asarray(ax).reshape(3, 4)
-        plt.subplots_adjust(left=0.05, right=0.97, bottom=0.15, hspace=0.5, top=0.92)
-        cbar_ax = f.add_axes([0.2, 0.08, 0.6, 0.02])
+        f = plt.figure(figsize=(12, 8))
+        gs = plt.GridSpec(nrows=5, ncols=40, figure=f, height_ratios=[3, 3, 0.3, .7, 2.5], hspace=.1)
+        axes, ax_list = {}, []
+        for i_axis, name_axis in enumerate(["wind", "solar"]):
+            axes[name_axis] = {}
+            for j_axis in range(4):
+                axes[name_axis][str(j_axis)] = plt.subplot(gs[i_axis, (j_axis)*10:(j_axis+1)*10], projection= ccrs.PlateCarree(), frameon=False)
+                ax_list.append(axes[name_axis][str(j_axis)])  # needed to add letter later
+
+        axes["colorbar"] = plt.subplot(gs[2, 9:31])
+        axes["PC"] = {}
+        for j_axis in range(4):
+            if j_axis == 0:
+                axes["PC"][str(j_axis)] = plt.subplot(gs[4, 1:9])
+            else:
+                axes["PC"][str(j_axis)] = plt.subplot(gs[4, (j_axis)*10+1:(j_axis+1)*10-1])
+            ax_list.append(axes["PC"][str(j_axis)])  # needed to add letter later
+
         # make plots
         vmax = .08
 
@@ -257,8 +269,7 @@ if joint:
             if i != 0:
                 plot_field(
                     eofs[Solar.var].sel({"mode": i}, drop=True),
-                    ax=ax[0, i],
-                    title=str(np.round(variance_fraction[i] * 100, 1)) + "% joint variance ",
+                    ax=axes["solar"][str(i)],
                     vmin=-vmax,
                     vmax=vmax,
                     extend='both',
@@ -268,22 +279,22 @@ if joint:
             else:
                 plot_field(
                     eofs[Solar.var].sel({"mode": i}, drop=True),
-                    ax=ax[0, i],
-                    title=str(np.round(variance_fraction[i] * 100, 1)) + "% joint variance ",
+                    ax=axes["solar"][str(i)],
                     vmin=-vmax,
                     vmax=vmax,
                     add_colorbar=True,
-                    cbar_ax=cbar_ax,
+                    cbar_ax=axes["colorbar"],
                     cmap=cmap,
                     extend='both',
                     cbar_kwargs={
                         "orientation": "horizontal",
-                        "label": r"Relative wind or solar power generation $\frac{CF_{20}}{CF_{LT}}$ [a.u.]",
+                        "label": r"Multivariate EOF of relative wind and solar power generation $\frac{G_{20y}}{G_{\mathrm{mean}}}$ [a.u.]"
                     },
                 )
             plot_field(
                 eofs[Wind.var].sel({"mode": i}, drop=True),
-                ax=ax[1, i],
+                ax=axes["wind"][str(i)],
+                title=str(np.round(variance_fraction[i] * 100, 1)) + "% joint variance ",
                 vmin=-vmax,
                 vmax=vmax,
                 add_colorbar=False,
@@ -292,14 +303,17 @@ if joint:
             )
             pc = pcs[:, i]
             pc = pd.Series(data=pc, index=wind_power.time.values)
-            pc.plot(ax=ax[2, i])
-            pc.rolling(window=5, center=True).mean().plot(
-                ax=ax[2, i], ls="--", color="black", lw=2
-            )
-            add_row_label(ax[0, 0], "Solar")
-            add_row_label(ax[1, 0], "Wind")
-
-        plt.suptitle(wind_scen)
+            pc.plot(ax=axes["PC"][str(i)], color="grey", lw=1.2)
+            axes["PC"][str(i)].set_ylim(ymin=-1.5, ymax=1.5)
+            axes["PC"][str(i)].set_yticks([-1, 0, 1])
+            if i != 0:
+                axes["PC"][str(i)].set_yticklabels([])
+        add_row_label(axes["solar"][str(0)], "Solar", 12, x=-0.18)
+        add_row_label(axes["wind"][str(0)], "Wind", 12, x=-.18)
+        axes["PC"]["0"].set_ylabel("PC timeseries [a.u.]", fontsize=12)
         plotname = wind_scen + "_power_meofs_mean.png"
-        add_letters(ax)
+        add_letters(np.array(ax_list[:-4]), fs=12, x=-0.08, y=1.003)
+        add_letters(np.array(ax_list[-4:]), fs=12, letter_offset=8, x=-0.11)
+
+        plt.subplots_adjust(0.03, 0.05, 0.99, 0.97)
         plt.savefig("/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/plots/analysis/eof/twenty/"+ plotname)
