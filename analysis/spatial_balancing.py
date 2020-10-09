@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import sys
 import matplotlib as mpl
 from mpl_toolkits.axisartist.parasite_axes import SubplotHost
+import matplotlib.ticker as ticker
 
 sys.path.append("../")
 from utils import add_letters
@@ -136,7 +137,10 @@ def plot_histograms(results, plotname):
 
 def plot_overview_hists(scenario_results):
     fs = 12
-    f, axs = plt.subplots(ncols=2, figsize=(12, 8))
+    f = plt.figure(figsize=(12, 8))
+    axs = np.array([plt.subplot(121), SubplotHost(f, 122)])  # SubplotHost instance needed for double x axis
+    for ax in axs:
+        f.add_subplot(ax)
     plot_path = BASE_PATH + "plots/analysis/country_assessment/"
     # plot hist of currently installed capacities
     results = scenario_results["wind + solar"]
@@ -184,19 +188,22 @@ def plot_overview_hists(scenario_results):
             / 100
             * results[data_timescale][countries]["alone"]
         )
-    axs[0].axhline(weighted_mean_amp, color="grey", ls="--", label="Mean Isolated", alpha=.8)
+    axs[0].axhline(
+        weighted_mean_amp, color="grey", ls="--", label="Mean Isolated", alpha=0.8
+    )
     axs[0].arrow(
-        x=x_off + 0.5,
+        x=x_off + 0.55,
         y=results[data_timescale]["All"]["others"],
         dx=0,
         dy=weighted_mean_amp - results[data_timescale]["All"]["others"],
         color="chocolate",
         length_includes_head=True,
-        width=.2,
-        head_width=.5,
-        alpha=.8,
-        head_length=.35
+        width=0.2,
+        head_width=0.5,
+        alpha=0.8,
+        head_length=0.35,
     )
+    axs[0].set_xlim(xmax=8.85)
     axs[0].legend(fontsize=fs, ncol=2)
 
     # overview histogram with cooperation and isolation penalty
@@ -224,13 +231,43 @@ def plot_overview_hists(scenario_results):
 
     axs[1].legend(fontsize=fs)
     axs[1].set_xticks(np.arange(8))
-    axs[1].set_xticklabels(
-        [x for x in scenario_results.keys()],
+    axs[1].set_xticklabels([x for x in scenario_results.keys()],)
+    plt.setp(
+        axs[1].axis["bottom"].major_ticklabels,
         rotation=45,
         ha="right",
         va="center",
         rotation_mode="anchor",
     )
+
+    # Add a second line of xlabels
+    ax2 = axs[1].twiny()
+    offset = -47, -65  # Position of the second axis
+    new_axisline = ax2.get_grid_helper().new_fixed_axis
+    ax2.axis["bottom"] = new_axisline(loc="bottom", axes=ax2, offset=offset)
+    ax2.axis["top"].set_visible(False)
+    axs[1].axis["right"].set_visible(False) # axis cloning activates right hand side y axis
+
+    ax2.set_xticks([-.5, 2.5, 5.2, 7.5])
+    ax2.xaxis.set_major_formatter(ticker.NullFormatter())
+    ax2.xaxis.set_minor_locator(ticker.FixedLocator([1, 3.8, 6.4]))
+    ax2.axis["bottom"].minor_ticks.set_ticksize(0)
+    ax2.xaxis.set_minor_formatter(
+        ticker.FixedFormatter(
+            ["current", "same total", "same distribution"]
+        )
+    )
+    # Add lines for orientation between both x axes
+    def add_line(f, x1):
+        x1 /= 3600.
+        x0 = x1 + 220./3600
+        y0 = 1-1705./2400
+        y1 = 1-1925./2400
+        line = plt.Line2D([x0, x1], [y0, y1], color="grey", linestyle='--', alpha=.4, transform=f.transFigure)
+        f.add_artist(line)
+
+    for x1 in [2410, 2910]:
+        add_line(f, x1)
 
     add_letters(axs, fs=12)
     for i in range(2):
