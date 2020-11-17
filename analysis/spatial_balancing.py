@@ -206,7 +206,7 @@ def plot_overview_hists(scenario_results):
     axs[0].set_xlim(xmax=8.85)
     axs[0].legend(fontsize=fs, ncol=2)
 
-    # overview histogram with cooperation and isolation penalty
+    # overview histogram with cooperation and autarky penalty
     axs[1].set_ylabel(
         r"Amplitude of variability   $\frac{G_\mathrm{max} -G_\mathrm{min}}{G_\mathrm{min}}$ [%]",
         fontsize=fs,
@@ -226,7 +226,7 @@ def plot_overview_hists(scenario_results):
             bottom=results["All"],
             color="chocolate",
             alpha=0.8,
-            label="Isolation penalty" if x_off == 0 else "",
+            label="Autarky penalty" if x_off == 0 else "",
         )
 
     axs[1].legend(fontsize=fs)
