@@ -33,8 +33,16 @@ def plot_CDF(ds, ax, title, scenario, color):
     :return:
     """
     values = ds.values.flatten()
+    values = values[np.isfinite(values)]  # drop nan values that occur in masked calculation
+    # Plotting CDFs via hist leads to a horizontal line at the upper end of the distribution because python thinks
+    # about CDFs as a number of bar plots. Here, one value is manually added to ensure that the CDF stays at ~1 once
+    # it reached this level. The introduced error is smaller than 1/1000 = 0.1%, so cannot be visibly detected in the
+    # plots.
+    if (values.max() < 15) & (values.size > 1000):
+        values = list(values)
+        values.append(15.1)
     ax.hist(
-        values[np.isfinite(values)],  # drop nan values that occur in masked calculation
+        values,
         cumulative=True,
         bins=3000,
         density=True,
