@@ -9,6 +9,7 @@
 import xarray as xr
 import glob
 import pandas as pd
+import shutil
 
 base_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/output/"
 zen_path = base_path + "zenodo/"
@@ -45,4 +46,5 @@ for wind_scenario in ["E-126_7580", "SWT120_3600", "SWT142_3150"]:
 """
 Copy country group timeseries
 """
-
+file_name = "country_generation.pickle"
+shutil.copy(base_path + file_name, zen_path + "countrygroup/" + file_name)
