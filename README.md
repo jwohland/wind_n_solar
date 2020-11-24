@@ -23,21 +23,21 @@ The conversion from downwelling surface radiation and temperature to PV generati
 20CRv3 ensemble member 100m wind speeds are retrieved from NERSC using the script in **wind/20CR_retrieval**. Running this script requires access to NERSC facilities. Nevertheless, we report it to here for reproducability. CERA20C wind speeds feature long-term trends that are corected in **wind/trend_correction** (see method section of the paper for more details). Conversion from wind speed to wind power generation happens in **wind/wind_power_conversion** and uses smoothed power curves from the windpowerlib.
 
 #### Postprocessing
-Annual mean netcdf files are computed in **postprocess/annual_means**. 
+Annual mean netcdf files are computed in **postprocess/annual_means_solar.sh**. 
 
 
 #### Analysis and Figures
 All analysis steps, including generation of the Figures, happen in **analysis**. 
 
-Figure 1 (hotspot maps) and Figure 2 (Cumulative Density Function for different capacity factor brackets) are computed in **analysis/hotspots.py**.
+Figure 1 (hotspot maps; \*.hotspots_rel_ensmean.png) and Figure 2 (Cumulative Density Function for different capacity factor brackets; *CDF_rel.png*) are computed in **analysis/hotspots.py**.
 
-Figure 3 (Correlations) are calculated in **analysis/correlations.py**. 
+Figure 3 (Correlations; *corr_both_constant_SWT120_3600.png*) are calculated in **analysis/correlations.py**. 
 
 The results displayed in Table 1 are from **analysis/conflicting_optimization.py**. 
 
-Figure 4 (Multivariate EOF analysis) is done in **analysis/eof.py**. 
+Figure 4 (Multivariate EOF analysis; *E-126_7580_power_meofs_mean.png*) is done in **analysis/eof.py**. 
 
-Lastly, Figure 5 (spatial balancing potential) is computed in **analysis/spatial_balancing.py**. 
+Lastly, Figure 5 (spatial balancing potential; *balancing_overview.jpeg*) is computed in **analysis/spatial_balancing.py**. 
 
 
 #### Data available through zenodo
