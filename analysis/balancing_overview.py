@@ -153,11 +153,11 @@ def draw_plot(df_countries, df_europe, mean_coop, mean_isolated):
 
     arrow_marker_kwargs = dict(color=COLORS["cooperation"], alpha=0.4)
     ax.vlines(
-        -1.325, ymin=mean_isolated, ymax=6.45, clip_on=False, **arrow_marker_kwargs
+        -1.325, ymin=mean_isolated, ymax=6.55, clip_on=False, **arrow_marker_kwargs
     )
-    ax.hlines(6.45, xmin=-1.325, xmax=0.3, clip_on=False, **arrow_marker_kwargs)
+    ax.hlines(6.55, xmin=-1.325, xmax=0.1, clip_on=False, **arrow_marker_kwargs)
     ax.text(
-        0.4,
+        0.2,
         6.6,
         "Benefit of\ncooperation",
         horizontalalignment="left",
