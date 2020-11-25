@@ -1,12 +1,17 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import sys
+
+sys.path.append("../")
+from utils import add_letters
+import numpy as np
 
 import spatial_balancing
 
 
 sns.set_context("notebook", font_scale=1.2)
-sns.set_style("ticks", {"axes.linewidth": 1.0, "font.sans-serif": "Helvetica"})
+sns.set_style("ticks", {"axes.linewidth": 1.0, "font": "LiberationSans"})
 plt.rcParams.update(
     {
         # Use sans math font
@@ -59,7 +64,7 @@ def get_and_clean_data():
             for k in scenario_results.keys()
         }
     ).T
-    df_europe["Isolation penalty"] = df_europe_isolated["others"] - df_europe["others"]
+    df_europe["Autarky penalty"] = df_europe_isolated["others"] - df_europe["others"]
     df_europe = df_europe.rename(columns={"others": "Cooperation"}).drop(
         "alone", axis=1
     )
@@ -88,7 +93,7 @@ def draw_plot(df_countries, df_europe, mean_coop, mean_isolated):
         color=[COLORS["others"], COLORS["isolated"]],
     )
 
-    ax.set_ylabel("% Amplitude of variability")
+    ax.set_ylabel("Amplitude of variability [%]")
 
     axhline_kwargs = dict(xmax=1.2, clip_on=False)
     ax.axhline(
@@ -121,9 +126,9 @@ def draw_plot(df_countries, df_europe, mean_coop, mean_isolated):
     handles, labels = ax.get_legend_handles_labels()
     handles = [handles[-2], handles[-1], handles[1], handles[0]]
     labels = [labels[-2], labels[-1], labels[1], labels[0]]
-    ax.legend(handles, labels, frameon=False, ncol=2)
+    ax.legend(handles, labels, frameon=False, ncol=2, fontsize=12)
 
-    ax.set_title(r"$\bf{a.}$ Country groups for current capacities", loc="left")
+    ax.set_title(r"Country groups for current capacities", loc="left")
 
     # SUBPLOT B
 
@@ -144,7 +149,7 @@ def draw_plot(df_countries, df_europe, mean_coop, mean_isolated):
     axvline_kwargs = dict(ymin=-0.315, ymax=1.0, clip_on=False, color="grey", alpha=0.2)
     for x in [-0.5, 2.5, 5.5, 7.5]:
         ax.axvline(x, **axvline_kwargs)
-    ax.axhline(-2.2, clip_on=False, color="grey", alpha=0.2)
+    ax.axhline(-2.3, clip_on=False, color="grey", alpha=0.2)
 
     arrow_marker_kwargs = dict(color=COLORS["cooperation"], alpha=0.4)
     ax.vlines(
@@ -153,16 +158,16 @@ def draw_plot(df_countries, df_europe, mean_coop, mean_isolated):
     ax.hlines(6.45, xmin=-1.325, xmax=0.3, clip_on=False, **arrow_marker_kwargs)
     ax.text(
         0.4,
-        6.45,
+        6.6,
         "Benefit of\ncooperation",
         horizontalalignment="left",
         verticalalignment="center",
-        fontsize=13,
+        fontsize=12,
         bbox=dict(facecolor="none", edgecolor=COLORS["cooperation"], alpha=0.4),
     )
 
     text_kwargs = dict(
-        horizontalalignment="center", verticalalignment="top", fontsize=11
+        horizontalalignment="center", verticalalignment="top", fontsize=10
     )
     ax.text(1, -1, "Current capacity\nand distribution", **text_kwargs)
     ax.text(4, -1, "Current capacity\nand even\nplant distribution", **text_kwargs)
@@ -171,14 +176,16 @@ def draw_plot(df_countries, df_europe, mean_coop, mean_isolated):
     )
 
     handles, labels = ax.get_legend_handles_labels()
-    ax.legend(handles[::-1], labels[::-1], frameon=False)
+    ax.legend(handles[::-1], labels[::-1], frameon=False, fontsize=12)
 
-    ax.set_title(r"$\bf{b.}$ Europe-wide mean for all scenarios", loc="left")
+    ax.set_title(r"Europe-wide mean for all scenarios", loc="left")
 
     # CLEAN UP PLOTS
 
     for ax in [ax0, ax1]:
-        ax.set_ylim(0, 7)
+        ax.set_ylim(0, 7.3)
+
+    add_letters(np.array([ax0, ax1]), fs=12, y=1.03)
 
     return fig
 
@@ -186,4 +193,10 @@ def draw_plot(df_countries, df_europe, mean_coop, mean_isolated):
 if __name__ == "__main__":
     df_countries, df_europe, mean_coop, mean_isolated = get_and_clean_data()
     fig = draw_plot(df_countries, df_europe, mean_coop, mean_isolated)
-    plt.savefig("balancing_overview.png", bbox_inches="tight", pad_inches=0.1, dpi=300)
+    plot_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/plots/analysis/country_assessment/"
+    plt.savefig(
+        plot_path + "balancing_overview.png",
+        bbox_inches="tight",
+        pad_inches=0.1,
+        dpi=300,
+    )
