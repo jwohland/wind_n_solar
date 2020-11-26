@@ -143,6 +143,12 @@ def draw_plot(df_countries, df_europe, mean_coop, mean_isolated):
         color=[COLORS["cooperation"], COLORS["isolated"]],
     )
 
+    for patch in ax.patches[1:3]:
+        patch.set_alpha(0.7)
+
+    for patch in ax.patches[9:11]:
+        patch.set_alpha(0.7)
+
     axhline_kwargs = dict(xmax=0.03)
     ax.axhline(mean_coop, color=COLORS["cooperation"], **axhline_kwargs)
     ax.axhline(mean_isolated, color=COLORS["isolated"], **axhline_kwargs)
@@ -171,7 +177,7 @@ def draw_plot(df_countries, df_europe, mean_coop, mean_isolated):
     text_kwargs = dict(
         horizontalalignment="center", verticalalignment="top", fontsize=10
     )
-    ax.text(1, -1, "Current capacity\nand distribution", **text_kwargs)
+    ax.text(1, -1, "Current capacity\nand distribution\n(lighter color: wind/\nsolar in isolation)", **text_kwargs)
     ax.text(4, -1, "Current capacity\nand even\nplant distribution", **text_kwargs)
     ax.text(
         6.5, -1, "Current plant\ndistribution\nand adjusted\nwind share", **text_kwargs
