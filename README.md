@@ -37,7 +37,7 @@ The results displayed in Table 1 are from **analysis/conflicting_optimization.py
 
 Figure 4 (Multivariate EOF analysis; *E-126_7580_power_meofs_mean.png*) is done in **analysis/eof.py**. 
 
-Lastly, Figure 5 (spatial balancing potential; *balancing_overview.jpeg*) is computed in **analysis/spatial_balancing.py**. 
+Lastly, Figure 5 (spatial balancing potential; *balancing_overview.jpeg*) is computed in **analysis/spatial_balancing.py** and plotted in **analysis/balancing_overview.py**. 
 
 
 #### Data available through zenodo
