@@ -13,9 +13,7 @@ from utils import add_letters
 mpl.rcParams["axes.spines.left"] = True
 mpl.rcParams["axes.spines.bottom"] = True
 
-import os
-
-BASE_PATH = os.path.join(os.path.dirname(__file__), "../")
+BASE_PATH = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/"
 
 
 def calc_histograms(wind_shares, solar_shares):
@@ -81,7 +79,7 @@ def plot_histograms(results, plotname, solar_shares, wind_shares):
     # plotting
     fs = 12
     f, axs = plt.subplots(ncols=2, figsize=(12, 8))
-    plot_path = BASE_PATH + "plots/"
+    plot_path = BASE_PATH + "plots/analysis/country_assessment/"
     for i, data_timescale in enumerate(results.keys()):
         ax = axs[i]
         ax.set_xticks(range(9))
@@ -101,7 +99,8 @@ def plot_histograms(results, plotname, solar_shares, wind_shares):
             label="Cooperation",
         )
         ax.set_ylabel(
-            "% Amplitude of variability", fontsize=fs,
+            r"Amplitude of variability   $\frac{G_\mathrm{max} -G_\mathrm{min}}{G_\mathrm{min}}$ [%]",
+            fontsize=fs,
         )
         ax.set_title(data_timescale, fontsize=fs + 1)
         weighted_mean_amp = 0
@@ -131,7 +130,7 @@ def plot_histograms(results, plotname, solar_shares, wind_shares):
     plt.legend(fontsize=fs)
     add_letters(axs)
     plt.subplots_adjust(bottom=0.3, left=0.075, top=0.95, right=0.98)
-    # plt.savefig(plot_path + "balancing_" + plotname + ".jpeg", dpi=300)
+    plt.savefig(plot_path + "balancing_" + plotname + ".jpeg", dpi=300)
     results["multidecadal"]["Mean_isolated"] = weighted_mean_amp
     return results
 
@@ -150,7 +149,7 @@ def plot_overview_hists(scenario_results, solar_shares, wind_shares):
     )  # SubplotHost instance needed for double x axis
     for ax in axs:
         f.add_subplot(ax)
-    plot_path = BASE_PATH + "plots/"
+    plot_path = BASE_PATH + "plots/analysis/country_assessment/"
     # plot hist of currently installed capacities
     results = scenario_results["Both"]
     data_timescale = "multidecadal"
@@ -169,7 +168,8 @@ def plot_overview_hists(scenario_results, solar_shares, wind_shares):
         label="Cooperation",
     )
     axs[0].set_ylabel(
-        "% Amplitude of variability", fontsize=fs,
+        r"Amplitude of variability   $\frac{G_\mathrm{max} -G_\mathrm{min}}{G_\mathrm{min}}$ [%]",
+        fontsize=fs,
     )
     weighted_mean_amp = 0
     for x_off, countries in enumerate(results[data_timescale].keys()[1:-1]):
