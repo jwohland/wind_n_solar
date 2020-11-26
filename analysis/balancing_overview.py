@@ -6,7 +6,6 @@ import sys
 sys.path.append("../")
 from utils import add_letters
 import numpy as np
-
 import spatial_balancing
 
 
@@ -18,6 +17,8 @@ plt.rcParams.update(
         "text.usetex": False,
         "mathtext.fontset": "stixsans",
         "svg.fonttype": "none",  # Make text editable
+        "axes.spines.right": False,
+        "axes.spines.top": False,
     }
 )
 
@@ -142,13 +143,14 @@ def draw_plot(df_countries, df_europe, mean_coop, mean_isolated):
         color=[COLORS["cooperation"], COLORS["isolated"]],
     )
 
-    axhline_kwargs = dict(xmax=0.09)
+    axhline_kwargs = dict(xmax=0.03)
     ax.axhline(mean_coop, color=COLORS["cooperation"], **axhline_kwargs)
     ax.axhline(mean_isolated, color=COLORS["isolated"], **axhline_kwargs)
 
-    axvline_kwargs = dict(ymin=-0.315, ymax=1.0, clip_on=False, color="grey", alpha=0.2)
+    axvline_kwargs = dict(ymin=-0.315, ymax=0.85, clip_on=False, color="grey", alpha=0.2)
     for x in [-0.5, 2.5, 5.5, 7.5]:
         ax.axvline(x, **axvline_kwargs)
+
     ax.axhline(-2.3, clip_on=False, color="grey", alpha=0.2)
 
     arrow_marker_kwargs = dict(color=COLORS["cooperation"], alpha=0.4)
