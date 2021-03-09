@@ -91,6 +91,7 @@ Wind = Generation_type(
 )
 individual = False
 joint = True
+exclude_high_lats = True  # included during review to check solar EOF robustness
 
 if individual:
     for Generation in [Solar, Wind]:  # zip?
@@ -107,6 +108,9 @@ if individual:
                 )
                 # load data
                 all_power = Generation.open_data(scenario).load()
+                if exclude_high_lats:
+                    # delete everything further north than tromso (norway)
+                    all_power = all_power.sel({"lat":slice(70, 30)})
                 all_power = running(all_power, time_scale_name)
                 # evaluate data
                 ens_members = list(all_power.number.values)
@@ -186,7 +190,9 @@ if individual:
                             ax=ax[1, i], ls="--", color="black", lw=2
                         )
                     plt.suptitle(scenario)
-                    if number == "ensemble_mean":
+                    if exclude_high_lats:
+                        plotname = Generation.name + "power_eofs_mean_excl_highlats.png"
+                    elif number == "ensemble_mean":
                         plotname = Generation.name + "power_eofs_mean.png"
                     else:
                         plotname = (
