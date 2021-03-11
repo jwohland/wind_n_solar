@@ -183,6 +183,7 @@ class LocalCostFunction:
         :param wind_share: share of wind capacity
         :return:
         """
+        assert (wind_share <= 1) & (wind_share >= 0)
         G = wind_share * self.wind_timeseries + (1 - wind_share) * self.solar_timeseries
         G /= G.mean("time")  # normalize to unit mean, see docstring for justification
         return G
@@ -210,7 +211,7 @@ class LocalCostFunction:
 shape_path = "/cluster/work/apatt/wojan/renewable_generation/wind_n_solar/data/shapefile/EEZ_land_union_v3_202003/"
 shdf = salem.read_shapefile(shape_path + "EEZ_Land_v3_202030.shp")
 
-wind_shares, multidec_amplitude, country_generation = {}, {}, {}
+wind_shares, country_generation = {}, {}
 
 for data_timescale in ["seasonal", "multidecadal"]:
     # load wind and solar
@@ -240,7 +241,7 @@ for data_timescale in ["seasonal", "multidecadal"]:
         "wind_power"
     ].mean("time")
 
-    wind_shares[data_timescale], multidec_amplitude[data_timescale] = {}, {}
+    wind_shares[data_timescale] = {}
     country_generation[data_timescale] = {}
     for country_group in country_groups:
         country_generation[data_timescale][", ".join(country_group)] = {}
@@ -273,26 +274,33 @@ for data_timescale in ["seasonal", "multidecadal"]:
             int(cf.generation_share_wind(res.x) * 100),
         )
         print(wind_shares)
-        if (
-            data_timescale == "multidecadal"
-        ):  # apply wind share that is optimal for seasonal scale to multidecadal generation data
-            G = cf.total_generation(
-                wind_shares["seasonal"][", ".join(country_group)][0]
-            )
-            multidec_amplitude["seasonal"][", ".join(country_group)] = float(
-                np.round((G.max() - G.min()) / G.min() * 100, 1)
-            )
-            # apply wind share that is optimal for multidecadal scale to multidecadal generation data
-            G = cf.total_generation(res.x)
-            multidec_amplitude["multidecadal"][", ".join(country_group)] = float(
-                np.round((G.max() - G.min()) / G.min() * 100, 1)
-            )
 
 pd.DataFrame.from_dict(data=wind_shares).to_latex(
     Wind.base_path + "output/optimization/wind_shares.csv"
 )
-pd.DataFrame.from_dict(data=multidec_amplitude).to_latex(
-    Wind.base_path + "output/optimization/multidec_amplitude.csv"
-)
+
 with open(base_path + "output/country_generation.pickle", "wb") as handle:
     pickle.dump(country_generation, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+for data_timescale in ["seasonal", "multidecadal"]:
+    amplitude = {}
+    amplitude["seasonal"], amplitude["multidecadal"] = {}, {}
+    for country_group in country_groups:
+        solar_timeseries = country_generation[data_timescale][", ".join(country_group)][
+            "solar"
+        ]
+        wind_timeseries = country_generation[data_timescale][", ".join(country_group)][
+            "wind"
+        ]
+        cf = LocalCostFunction(solar_timeseries, wind_timeseries)
+        for evaluation_timescale in ["seasonal", "multidecadal"]:
+            G = cf.total_generation(
+                wind_shares[evaluation_timescale][", ".join(country_group)][0] / 100
+            )
+            amplitude[evaluation_timescale][", ".join(country_group)] = float(
+                np.round((G.max() - G.min()) / G.min() * 100, 1)
+            )
+    pd.DataFrame.from_dict(data=amplitude).to_latex(
+        Wind.base_path + "output/optimization/" + data_timescale + "_amplitude.csv"
+    )
