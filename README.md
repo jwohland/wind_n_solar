@@ -41,4 +41,4 @@ Lastly, Figure 5 (spatial balancing potential; *balancing_overview.jpeg*) is com
 
 
 #### Data available through zenodo
-Ensemble mean 3h gridbox level PV and wind power generation and country level aggregates are available via zenodo. The corresponding processing is documented in **zenodo/prep_move_zenodo.py**. An example plotting script for the data available on zenodo is provided in **zenodo/example.py**. 
+Ensemble mean 3h gridbox level PV and wind power generation and country level aggregates are available via zenodo (https://zenodo.org/record/4280851). The corresponding processing is documented in **zenodo/prep_move_zenodo.py**. An example plotting script for the data available on zenodo is provided in **zenodo/example.py**. 
