@@ -2,7 +2,7 @@
 
 In short, we use wind speed and surface radiation data from two centennial reanalyses (20CRv3 and CERA20C) to model power generation from solar photovoltaics and wind power and analyze the resulting data. The approach is described in greater detail in the method section and supplementary information of the following paper
 
-[INSERT REFERENCE HERE]
+Mitigating a century of European renewable variability with transmission and informed siting
 
 Code is written in Python and sometimes as bash scripts. 
 
